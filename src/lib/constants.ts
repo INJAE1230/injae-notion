@@ -1,8 +1,10 @@
-import type { Project, Status, Tag } from "./types";
+import type { Project, Status, Tag, AchievementRating, InputSource } from "./types";
 
 export const PROJECTS: Project[] = ["내부", "클라이언트", "개인"];
 export const STATUSES: Status[] = ["예정", "진행 중", "완료"];
 export const TAGS: Tag[] = ["회의", "개발", "기획", "리뷰", "버그"];
+export const ACHIEVEMENT_RATINGS: AchievementRating[] = ["상", "중", "하"];
+export const INPUT_SOURCES: InputSource[] = ["웹", "카카오톡", "슬랙", "빠른메모"];
 
 export const STATUS_COLORS: Record<Status, string> = {
   "예정": "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",

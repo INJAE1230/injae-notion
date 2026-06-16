@@ -1,5 +1,5 @@
 import { notion, databaseId, getDataSourceId } from "./notion";
-import type { WorkLog, WorkLogFilters, WorkLogFormData, Tag } from "./types";
+import type { WorkLog, WorkLogFilters, WorkLogFormData, Tag, AchievementRating, InputSource } from "./types";
 
 interface NotionPage {
   id: string;
@@ -17,6 +17,10 @@ function mapPageToWorkLog(page: NotionPage): WorkLog {
   const multiSelect = p["태그"]?.multi_select as { name: string }[] | undefined;
   const numberVal = p["소요시간(시간)"]?.number as number | null | undefined;
   const urlVal = p["관련 링크"]?.url as string | null | undefined;
+  const outcomeText = p["성과/결과"]?.rich_text as { plain_text: string }[] | undefined;
+  const ratingObj = p["성과등급"]?.select as { name: string } | null | undefined;
+  const sourceObj = p["입력소스"]?.select as { name: string } | null | undefined;
+  const originalTextArr = p["입력원본"]?.rich_text as { plain_text: string }[] | undefined;
 
   return {
     id: page.id,
@@ -28,6 +32,10 @@ function mapPageToWorkLog(page: NotionPage): WorkLog {
     tags: (multiSelect?.map((t) => t.name) || []) as Tag[],
     hours: numberVal ?? null,
     link: urlVal ?? null,
+    outcome: outcomeText?.[0]?.plain_text || null,
+    rating: (ratingObj?.name as AchievementRating) || null,
+    inputSource: (sourceObj?.name as InputSource) || null,
+    originalText: originalTextArr?.[0]?.plain_text || null,
   };
 }
 
@@ -137,7 +145,7 @@ export async function getWorkLog(pageId: string): Promise<WorkLog> {
   return mapPageToWorkLog(page);
 }
 
-export async function createWorkLog(data: WorkLogFormData): Promise<string> {
+export async function createWorkLog(data: WorkLogFormData, meta?: { inputSource?: InputSource; originalText?: string }): Promise<string> {
   const properties: Record<string, unknown> = {
     "업무": { title: [{ text: { content: data.title } }] },
     "날짜": { date: { start: data.date } },
@@ -156,6 +164,18 @@ export async function createWorkLog(data: WorkLogFormData): Promise<string> {
   }
   if (data.link) {
     properties["관련 링크"] = { url: data.link };
+  }
+  if (data.outcome) {
+    properties["성과/결과"] = { rich_text: [{ text: { content: data.outcome } }] };
+  }
+  if (data.rating) {
+    properties["성과등급"] = { select: { name: data.rating } };
+  }
+  if (meta?.inputSource) {
+    properties["입력소스"] = { select: { name: meta.inputSource } };
+  }
+  if (meta?.originalText) {
+    properties["입력원본"] = { rich_text: [{ text: { content: meta.originalText } }] };
   }
 
   const page = await notion.pages.create({
@@ -201,6 +221,14 @@ export async function updateWorkLog(
   }
   if (data.link !== undefined) {
     properties["관련 링크"] = { url: data.link || null };
+  }
+  if (data.outcome !== undefined) {
+    properties["성과/결과"] = {
+      rich_text: data.outcome ? [{ text: { content: data.outcome } }] : [],
+    };
+  }
+  if (data.rating !== undefined) {
+    properties["성과등급"] = data.rating ? { select: { name: data.rating } } : { select: null };
   }
 
   await notion.pages.update({

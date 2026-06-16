@@ -14,8 +14,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { PROJECTS, STATUSES, TAGS, TAG_COLORS } from "@/lib/constants";
-import type { WorkLog, WorkLogFormData, Tag } from "@/lib/types";
+import { PROJECTS, STATUSES, TAGS, TAG_COLORS, ACHIEVEMENT_RATINGS } from "@/lib/constants";
+import type { WorkLog, WorkLogFormData, Tag, AchievementRating } from "@/lib/types";
 
 function getToday() {
   return new Date().toISOString().split("T")[0];
@@ -34,6 +34,8 @@ export function LogForm({ log }: { log?: WorkLog }) {
     tags: log?.tags || [],
     hours: log?.hours ?? null,
     link: log?.link || null,
+    outcome: log?.outcome || null,
+    rating: log?.rating || null,
   });
   const [loading, setLoading] = useState(false);
 
@@ -197,6 +199,45 @@ export function LogForm({ log }: { log?: WorkLog }) {
           />
         </div>
       </div>
+
+      {form.status === "완료" && (
+        <div className="space-y-4 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 p-4">
+          <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+            성과 기록 (완료된 업무)
+          </p>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">성과/결과</label>
+            <Textarea
+              value={form.outcome || ""}
+              onChange={(e) =>
+                setForm({ ...form, outcome: e.target.value || null })
+              }
+              placeholder="이 업무의 결과물이나 성과를 기록하세요"
+              rows={3}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">성과등급</label>
+            <Select
+              value={form.rating || ""}
+              onValueChange={(v) =>
+                setForm({ ...form, rating: (v || null) as AchievementRating | null })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="등급 선택" />
+              </SelectTrigger>
+              <SelectContent>
+                {ACHIEVEMENT_RATINGS.map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {r}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
 
       <div className="flex gap-3 pt-2">
         <Button type="submit" disabled={loading}>

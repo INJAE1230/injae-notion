@@ -108,6 +108,25 @@ export default async function LogDetailPage({
               )}
             </div>
           </div>
+
+          {(log.outcome || log.rating) && (
+            <>
+              <Separator />
+              <div className="space-y-3 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 p-4">
+                <h3 className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                  성과 기록
+                </h3>
+                {log.outcome && (
+                  <p className="whitespace-pre-wrap text-sm">{log.outcome}</p>
+                )}
+                {log.rating && (
+                  <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
+                    성과등급: {log.rating}
+                  </Badge>
+                )}
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

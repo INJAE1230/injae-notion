@@ -5,6 +5,7 @@ import { StatusChart } from "@/components/dashboard/status-chart";
 import { ProjectChart } from "@/components/dashboard/project-chart";
 import { WeeklyChart } from "@/components/dashboard/weekly-chart";
 import { RecentLogs } from "@/components/dashboard/recent-logs";
+import { QuickMemoInput } from "@/components/memo/quick-memo-input";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,7 @@ export default async function DashboardPage() {
         <h1 className="text-2xl font-bold tracking-tight">대시보드</h1>
         <p className="text-sm text-muted-foreground">{today}</p>
       </div>
+      <QuickMemoInput />
       <SummaryCards stats={stats} />
       <div className="grid gap-4 md:grid-cols-2">
         <ProjectChart stats={stats} />
