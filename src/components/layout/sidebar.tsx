@@ -15,6 +15,7 @@ import {
   Trophy,
   FileText,
   BarChart3,
+  Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +31,7 @@ const NAV_ITEMS = [
   { href: "/", label: "대시보드", icon: LayoutDashboard },
   { href: "/logs", label: "업무 목록", icon: ClipboardList },
   { href: "/logs/new", label: "업무 추가", icon: Plus },
+  { href: "/calendar", label: "캘린더", icon: Calendar },
   { href: "/achievements", label: "성과 관리", icon: Trophy },
   { href: "/reports", label: "보고서", icon: FileText },
   { href: "/analytics", label: "통계 분석", icon: BarChart3 },
