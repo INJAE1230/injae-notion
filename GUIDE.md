@@ -20,8 +20,8 @@
 
 ### 최초 설치
 ```bash
-git clone https://github.com/INJAE1230/chungchosu-notion.git
-cd chungchosu-notion
+git clone https://github.com/INJAE1230/injae-notion.git
+cd injae-notion
 npm install
 ```
 
@@ -376,8 +376,8 @@ PWA를 지원하므로 홈 화면에 추가하면 앱처럼 사용할 수 있습
 
 ### 1단계: 코드 받기
 ```bash
-git clone https://github.com/INJAE1230/chungchosu-notion.git
-cd chungchosu-notion
+git clone https://github.com/INJAE1230/injae-notion.git
+cd injae-notion
 npm install
 ```
 
