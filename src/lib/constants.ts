@@ -1,6 +1,6 @@
 import type { Project, Status, Tag, AchievementRating, InputSource } from "./types";
 
-export const PROJECTS: Project[] = ["내부", "클라이언트", "개인"];
+export const PROJECTS: Project[] = ["업무", "개인일정"];
 export const STATUSES: Status[] = ["예정", "진행 중", "완료"];
 export const TAGS: Tag[] = ["회의", "개발", "기획", "리뷰", "버그"];
 export const ACHIEVEMENT_RATINGS: AchievementRating[] = ["상", "중", "하"];
@@ -13,9 +13,8 @@ export const STATUS_COLORS: Record<Status, string> = {
 };
 
 export const PROJECT_COLORS: Record<Project, string> = {
-  "내부": "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
-  "클라이언트": "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
-  "개인": "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300",
+  "업무": "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
+  "개인일정": "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300",
 };
 
 export const TAG_COLORS: Record<Tag, string> = {

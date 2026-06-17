@@ -13,9 +13,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { TimeAllocation } from "@/lib/types";
 
 const COLORS: Record<string, string> = {
-  "내부": "#8b5cf6",
-  "클라이언트": "#f97316",
-  "개인": "#06b6d4",
+  "업무": "#8b5cf6",
+  "개인일정": "#06b6d4",
 };
 
 export function TimeAllocationChart({ data }: { data: TimeAllocation[] }) {

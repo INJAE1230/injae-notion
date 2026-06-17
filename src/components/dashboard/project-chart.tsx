@@ -13,16 +13,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { DashboardStats } from "@/lib/types";
 
 const PROJECT_COLORS: Record<string, string> = {
-  "내부": "#8b5cf6",
-  "클라이언트": "#f97316",
-  "개인": "#06b6d4",
+  "업무": "#8b5cf6",
+  "개인일정": "#06b6d4",
 };
 
 export function ProjectChart({ stats }: { stats: DashboardStats }) {
   const data = [
-    { name: "내부", count: stats.byProject["내부"] || 0, fill: PROJECT_COLORS["내부"] },
-    { name: "클라이언트", count: stats.byProject["클라이언트"] || 0, fill: PROJECT_COLORS["클라이언트"] },
-    { name: "개인", count: stats.byProject["개인"] || 0, fill: PROJECT_COLORS["개인"] },
+    { name: "업무", count: stats.byProject["업무"] || 0, fill: PROJECT_COLORS["업무"] },
+    { name: "개인일정", count: stats.byProject["개인일정"] || 0, fill: PROJECT_COLORS["개인일정"] },
   ];
 
   return (

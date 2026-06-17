@@ -1,4 +1,4 @@
-export type Project = "내부" | "클라이언트" | "개인";
+export type Project = "업무" | "개인일정";
 export type Status = "예정" | "진행 중" | "완료";
 export type Tag = "회의" | "개발" | "기획" | "리뷰" | "버그";
 export type AchievementRating = "상" | "중" | "하";

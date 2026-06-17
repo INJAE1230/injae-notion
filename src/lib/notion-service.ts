@@ -6,6 +6,12 @@ interface NotionPage {
   properties: Record<string, unknown>;
 }
 
+function mapProject(name: string | undefined | null): WorkLog["project"] {
+  if (name === "개인" || name === "개인일정") return "개인일정";
+  if (name === "업무" || name === "내부" || name === "클라이언트") return "업무";
+  return "업무";
+}
+
 function mapPageToWorkLog(page: NotionPage): WorkLog {
   const p = page.properties as Record<string, Record<string, unknown>>;
 
@@ -26,7 +32,7 @@ function mapPageToWorkLog(page: NotionPage): WorkLog {
     id: page.id,
     title: titleArr?.[0]?.plain_text || "",
     date: dateObj?.start || "",
-    project: (selectObj?.name || "내부") as WorkLog["project"],
+    project: mapProject(selectObj?.name),
     status: (statusObj?.name || "예정") as WorkLog["status"],
     content: richText?.[0]?.plain_text || "",
     tags: (multiSelect?.map((t) => t.name) || []) as Tag[],
