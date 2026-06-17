@@ -35,7 +35,7 @@ OPENAI_API_KEY=OpenAI_API_키
 
 - **NOTION_TOKEN**: https://www.notion.so/profile/integrations 에서 발급
 - **NOTION_DATABASE_ID**: 노션 데이터베이스 URL에서 확인 (32자리 영숫자)
-- **OPENAI_API_KEY**: https://platform.openai.com/api-keys 에서 발급 (빠른 메모 기능에 필요)
+- **OPENAI_API_KEY**: https://platform.openai.com/api-keys 에서 발급 (빠른 메모 AI 파싱에 필요)
 
 ### 실행
 ```bash
@@ -53,7 +53,7 @@ vercel env add NOTION_DATABASE_ID
 vercel env add OPENAI_API_KEY
 vercel --prod
 ```
-배포 후 `https://프로젝트명.vercel.app` 주소로 어디서든 접속 가능합니다.
+배포 후 Vercel이 알려주는 URL로 어디서든 접속 가능합니다.
 
 ---
 
@@ -247,7 +247,7 @@ vercel --prod
 
 **경로**: `/reports` (사이드바 → 보고서)
 
-업무 데이터를 기반으로 **보고서를 자동 생성**합니다. OpenAI API 키 없이도 동작합니다.
+업무 데이터를 기반으로 **보고서를 자동 생성**합니다.
 
 ### 사용법
 1. **빠른 선택**: "오늘", "이번 주", "이번 달" 버튼 클릭
@@ -374,30 +374,90 @@ PWA를 지원하므로 홈 화면에 추가하면 앱처럼 사용할 수 있습
 
 ## 11. 다른 PC에서 실행하기
 
-### 1단계: 코드 받기
+새 PC에서 이 프로젝트를 로컬로 실행하는 전체 과정입니다.
+
+### 사전 준비
+
+아래 프로그램이 설치되어 있어야 합니다:
+
+| 프로그램 | 다운로드 | 확인 명령어 |
+|----------|----------|-------------|
+| **Node.js** (v18 이상) | https://nodejs.org | `node -v` |
+| **Git** | https://git-scm.com | `git -v` |
+
+- Node.js는 **LTS 버전**을 설치하세요 (설치 시 "npm" 포함 체크)
+- Git 설치 시 기본 옵션으로 진행하면 됩니다
+
+### 1단계: 코드 다운로드
+
+원하는 위치에서 명령 프롬프트(또는 터미널)를 열고:
 ```bash
 git clone https://github.com/INJAE1230/injae-notion.git
 cd injae-notion
+```
+
+### 2단계: 패키지 설치
+```bash
 npm install
 ```
 
-### 2단계: .env 파일 만들기
-프로젝트 폴더에서:
+### 3단계: 환경 변수 설정
+
+프로젝트 폴더 안에 `.env` 파일을 생성합니다.
+
+**Windows (메모장):**
 ```bash
 notepad .env
 ```
-아래 내용 입력 후 저장:
+
+**아래 내용을 입력하고 저장:**
 ```
 NOTION_TOKEN=여기에_노션_토큰_입력
 NOTION_DATABASE_ID=여기에_데이터베이스_ID_입력
 OPENAI_API_KEY=여기에_OpenAI_키_입력
 ```
 
-### 3단계: 실행
+#### 각 값을 어디서 찾나요?
+
+**NOTION_TOKEN (노션 API 토큰)**
+1. https://www.notion.so/profile/integrations 접속
+2. 기존에 만들어둔 인테그레이션 클릭
+3. "내부 인테그레이션 시크릿"에서 토큰 복사 (`ntn_`으로 시작)
+
+**NOTION_DATABASE_ID (데이터베이스 ID)**
+1. 노션에서 업무일지 데이터베이스 페이지 열기
+2. 브라우저 URL 확인: `https://www.notion.so/xxxxxxxx?v=...`
+3. `xxxxxxxx` 부분이 데이터베이스 ID (32자리)
+
+**OPENAI_API_KEY (OpenAI 키)**
+1. https://platform.openai.com/api-keys 접속
+2. 기존 키 복사 또는 새 키 생성 (`sk-`로 시작)
+3. 이 키는 빠른 메모의 AI 파싱 기능에 사용됩니다
+4. OpenAI 계정에 크레딧(잔액)이 있어야 동작합니다
+
+> **참고**: 기존 PC의 `.env` 파일 내용을 그대로 복사해오면 가장 간편합니다.
+
+### 4단계: 실행
 ```bash
 npm run dev
 ```
-http://localhost:3000 접속
+브라우저에서 http://localhost:3000 접속하면 완료!
+
+### 코드 업데이트 (다른 PC에서 수정한 내용 가져오기)
+
+이미 클론한 프로젝트가 있다면 최신 코드를 가져옵니다:
+```bash
+git pull origin main
+npm install
+npm run dev
+```
+
+### Vercel로 배포한 경우
+
+Vercel에 이미 배포되어 있다면 로컬 설치 없이 **배포 URL로 바로 접속** 가능합니다.
+모바일에서도 동일한 URL로 접속하면 됩니다.
+
+로컬에서 개발/수정 작업이 필요한 경우에만 위의 설치 과정을 따라주세요.
 
 ---
 
@@ -427,6 +487,14 @@ http://localhost:3000 접속
 ### "CSV 파일이 엑셀에서 깨져요"
 - UTF-8 BOM이 포함되어 있어 일반적으로 깨지지 않습니다
 - 그래도 깨지면: 엑셀 → 데이터 → 텍스트에서 가져오기 → UTF-8 선택
+
+### "npm install 에러가 나요"
+- Node.js가 v18 이상인지 확인: `node -v`
+- node_modules 삭제 후 재설치:
+  ```bash
+  rmdir /s /q node_modules
+  npm install
+  ```
 
 ### "빌드 에러가 나요"
 ```bash
