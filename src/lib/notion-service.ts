@@ -257,16 +257,17 @@ export async function updateWorkLog(
   if (data.link !== undefined) {
     properties["관련 링크"] = { url: data.link || null };
   }
+  const optionalProperties: Record<string, unknown> = {};
   if (data.outcome !== undefined) {
-    properties["성과/결과"] = {
+    optionalProperties["성과/결과"] = {
       rich_text: data.outcome ? [{ text: { content: data.outcome } }] : [],
     };
   }
   if (data.rating !== undefined) {
-    properties["성과등급"] = data.rating ? { select: { name: data.rating } } : { select: null };
+    optionalProperties["성과등급"] = data.rating ? { select: { name: data.rating } } : { select: null };
   }
   if (data.attachments !== undefined) {
-    properties["첨부파일"] = {
+    optionalProperties["첨부파일"] = {
       files: data.attachments.map((a) => ({
         type: "external" as const,
         name: a.name,
@@ -275,10 +276,21 @@ export async function updateWorkLog(
     };
   }
 
-  await notion.pages.update({
-    page_id: pageId,
-    properties,
-  } as Parameters<typeof notion.pages.update>[0]);
+  try {
+    await notion.pages.update({
+      page_id: pageId,
+      properties: { ...properties, ...optionalProperties },
+    } as Parameters<typeof notion.pages.update>[0]);
+  } catch (error) {
+    if (Object.keys(optionalProperties).length > 0) {
+      await notion.pages.update({
+        page_id: pageId,
+        properties,
+      } as Parameters<typeof notion.pages.update>[0]);
+    } else {
+      throw error;
+    }
+  }
 }
 
 export async function deleteWorkLog(pageId: string): Promise<void> {
