@@ -29,8 +29,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ ids: results, count: results.length });
   } catch (error) {
     console.error("업무 저장 실패:", error);
+    const message = error instanceof Error ? error.message : "업무 저장 중 오류가 발생했습니다.";
     return NextResponse.json(
-      { error: "업무 저장 중 오류가 발생했습니다." },
+      { error: message },
       { status: 500 }
     );
   }

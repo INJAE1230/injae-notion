@@ -157,7 +157,7 @@ export async function createWorkLog(data: WorkLogFormData, meta?: { inputSource?
     "날짜": { date: { start: data.date } },
     "프로젝트": { select: { name: data.project } },
     "진행상태": { status: { name: data.status } },
-    "업무내용": { rich_text: [{ text: { content: data.content } }] },
+    "업무내용": { rich_text: [{ text: { content: data.content || "" } }] },
   };
 
   if (data.tags.length > 0) {
@@ -177,19 +177,31 @@ export async function createWorkLog(data: WorkLogFormData, meta?: { inputSource?
   if (data.rating) {
     properties["성과등급"] = { select: { name: data.rating } };
   }
+
+  const metaProperties: Record<string, unknown> = {};
   if (meta?.inputSource) {
-    properties["입력소스"] = { select: { name: meta.inputSource } };
+    metaProperties["입력소스"] = { select: { name: meta.inputSource } };
   }
   if (meta?.originalText) {
-    properties["입력원본"] = { rich_text: [{ text: { content: meta.originalText } }] };
+    metaProperties["입력원본"] = { rich_text: [{ text: { content: meta.originalText } }] };
   }
 
-  const page = await notion.pages.create({
-    parent: { database_id: databaseId },
-    properties,
-  } as Parameters<typeof notion.pages.create>[0]);
-
-  return page.id;
+  try {
+    const page = await notion.pages.create({
+      parent: { database_id: databaseId },
+      properties: { ...properties, ...metaProperties },
+    } as Parameters<typeof notion.pages.create>[0]);
+    return page.id;
+  } catch (error) {
+    if (Object.keys(metaProperties).length > 0) {
+      const page = await notion.pages.create({
+        parent: { database_id: databaseId },
+        properties,
+      } as Parameters<typeof notion.pages.create>[0]);
+      return page.id;
+    }
+    throw error;
+  }
 }
 
 export async function updateWorkLog(
