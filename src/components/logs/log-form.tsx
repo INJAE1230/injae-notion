@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { PROJECTS, STATUSES, TAGS, TAG_COLORS, ACHIEVEMENT_RATINGS } from "@/lib/constants";
+import { FileUpload } from "@/components/file-upload";
+import type { OcrResult } from "@/components/file-upload";
 import type { WorkLog, WorkLogFormData, Tag, AchievementRating } from "@/lib/types";
 
 function getToday() {
@@ -36,8 +38,34 @@ export function LogForm({ log }: { log?: WorkLog }) {
     link: log?.link || null,
     outcome: log?.outcome || null,
     rating: log?.rating || null,
+    attachments: log?.attachments || [],
   });
   const [loading, setLoading] = useState(false);
+
+  function handleOcrResult(result: OcrResult) {
+    const updates: Partial<WorkLogFormData> = {};
+    if (result.summary && !form.title) {
+      updates.title = result.summary;
+    }
+    if (result.date && !form.date) {
+      updates.date = result.date;
+    }
+    const details = [
+      result.documentType !== "기타" ? `[${result.documentType}]` : "",
+      result.storeName ? `상호: ${result.storeName}` : "",
+      result.totalAmount ? `금액: ${result.totalAmount.toLocaleString()}원` : "",
+      ...result.items.map(
+        (item) =>
+          `- ${item.name}${item.quantity ? ` x${item.quantity}` : ""}${item.amount ? ` ${item.amount.toLocaleString()}원` : ""}`
+      ),
+    ]
+      .filter(Boolean)
+      .join("\n");
+    if (details) {
+      updates.content = form.content ? `${form.content}\n\n${details}` : details;
+    }
+    setForm((prev) => ({ ...prev, ...updates }));
+  }
 
   const toggleTag = (tag: Tag) => {
     setForm((prev) => ({
@@ -199,6 +227,12 @@ export function LogForm({ log }: { log?: WorkLog }) {
           />
         </div>
       </div>
+
+      <FileUpload
+        attachments={form.attachments || []}
+        onChange={(attachments) => setForm({ ...form, attachments })}
+        onOcrResult={handleOcrResult}
+      />
 
       {form.status === "완료" && (
         <div className="space-y-4 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 p-4">

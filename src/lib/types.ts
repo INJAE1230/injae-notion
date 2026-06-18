@@ -4,6 +4,13 @@ export type Tag = "회의" | "개발" | "기획" | "리뷰" | "버그";
 export type AchievementRating = "상" | "중" | "하";
 export type InputSource = "웹" | "카카오톡" | "슬랙" | "빠른메모";
 
+export interface FileAttachment {
+  name: string;
+  url: string;
+  size?: number;
+  type?: string;
+}
+
 export interface WorkLog {
   id: string;
   title: string;
@@ -18,6 +25,7 @@ export interface WorkLog {
   rating: AchievementRating | null;
   inputSource: InputSource | null;
   originalText: string | null;
+  attachments: FileAttachment[];
 }
 
 export interface WorkLogFilters {
@@ -40,6 +48,7 @@ export interface WorkLogFormData {
   link: string | null;
   outcome?: string | null;
   rating?: AchievementRating | null;
+  attachments?: FileAttachment[];
 }
 
 export interface DashboardStats {

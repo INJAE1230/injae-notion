@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { STATUS_COLORS, PROJECT_COLORS, TAG_COLORS } from "@/lib/constants";
-import { Pencil, ArrowLeft, ExternalLink } from "lucide-react";
+import { Pencil, ArrowLeft, ExternalLink, FileText, Image } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -108,6 +108,36 @@ export default async function LogDetailPage({
               )}
             </div>
           </div>
+
+          {log.attachments && log.attachments.length > 0 && (
+            <>
+              <Separator />
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-muted-foreground">
+                  첨부파일 ({log.attachments.length})
+                </h3>
+                <div className="space-y-1.5">
+                  {log.attachments.map((file, idx) => (
+                    <a
+                      key={idx}
+                      href={file.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted/50 transition-colors"
+                    >
+                      {file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                        <Image className="h-4 w-4 text-blue-500" />
+                      ) : (
+                        <FileText className="h-4 w-4 text-orange-500" />
+                      )}
+                      <span className="flex-1 truncate">{file.name}</span>
+                      <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
 
           {(log.outcome || log.rating) && (
             <>

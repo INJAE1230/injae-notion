@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { STATUS_COLORS, PROJECT_COLORS, TAG_COLORS } from "@/lib/constants";
+import { Paperclip } from "lucide-react";
 import type { WorkLogFormData } from "@/lib/types";
 
 interface MemoPreviewProps {
@@ -159,6 +160,12 @@ export function MemoPreview({
             </div>
             {entry.content && (
               <p className="text-xs text-muted-foreground">{entry.content}</p>
+            )}
+            {entry.attachments && entry.attachments.length > 0 && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Paperclip className="h-3 w-3" />
+                <span>{entry.attachments.length}개 파일 첨부</span>
+              </div>
             )}
           </div>
         ))}

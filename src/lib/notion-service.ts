@@ -1,5 +1,5 @@
 import { notion, databaseId, getDataSourceId } from "./notion";
-import type { WorkLog, WorkLogFilters, WorkLogFormData, Tag, AchievementRating, InputSource } from "./types";
+import type { WorkLog, WorkLogFilters, WorkLogFormData, Tag, AchievementRating, InputSource, FileAttachment } from "./types";
 
 interface NotionPage {
   id: string;
@@ -27,6 +27,12 @@ function mapPageToWorkLog(page: NotionPage): WorkLog {
   const ratingObj = p["성과등급"]?.select as { name: string } | null | undefined;
   const sourceObj = p["입력소스"]?.select as { name: string } | null | undefined;
   const originalTextArr = p["입력원본"]?.rich_text as { plain_text: string }[] | undefined;
+  const filesArr = p["첨부파일"]?.files as { name: string; type: string; external?: { url: string }; file?: { url: string } }[] | undefined;
+
+  const attachments: FileAttachment[] = (filesArr || []).map((f) => ({
+    name: f.name,
+    url: (f.type === "external" ? f.external?.url : f.file?.url) || "",
+  })).filter((a) => a.url);
 
   return {
     id: page.id,
@@ -42,6 +48,7 @@ function mapPageToWorkLog(page: NotionPage): WorkLog {
     rating: (ratingObj?.name as AchievementRating) || null,
     inputSource: (sourceObj?.name as InputSource) || null,
     originalText: originalTextArr?.[0]?.plain_text || null,
+    attachments,
   };
 }
 
@@ -178,6 +185,16 @@ export async function createWorkLog(data: WorkLogFormData, meta?: { inputSource?
     properties["성과등급"] = { select: { name: data.rating } };
   }
 
+  if (data.attachments && data.attachments.length > 0) {
+    properties["첨부파일"] = {
+      files: data.attachments.map((a) => ({
+        type: "external" as const,
+        name: a.name,
+        external: { url: a.url },
+      })),
+    };
+  }
+
   const metaProperties: Record<string, unknown> = {};
   if (meta?.inputSource) {
     metaProperties["입력소스"] = { select: { name: meta.inputSource } };
@@ -247,6 +264,15 @@ export async function updateWorkLog(
   }
   if (data.rating !== undefined) {
     properties["성과등급"] = data.rating ? { select: { name: data.rating } } : { select: null };
+  }
+  if (data.attachments !== undefined) {
+    properties["첨부파일"] = {
+      files: data.attachments.map((a) => ({
+        type: "external" as const,
+        name: a.name,
+        external: { url: a.url },
+      })),
+    };
   }
 
   await notion.pages.update({
