@@ -171,18 +171,6 @@ export async function createWorkLog(data: WorkLogFormData, meta?: { inputSource?
   if (data.link) {
     properties["관련 링크"] = { url: data.link };
   }
-  if (data.outcome) {
-    properties["성과/결과"] = { rich_text: [{ text: { content: data.outcome } }] };
-  }
-  if (data.rating) {
-    properties["성과등급"] = { select: { name: data.rating } };
-  }
-  if (meta?.inputSource) {
-    properties["입력소스"] = { select: { name: meta.inputSource } };
-  }
-  if (meta?.originalText) {
-    properties["입력원본"] = { rich_text: [{ text: { content: meta.originalText } }] };
-  }
 
   const page = await notion.pages.create({
     parent: { database_id: databaseId },
@@ -228,15 +216,6 @@ export async function updateWorkLog(
   if (data.link !== undefined) {
     properties["관련 링크"] = { url: data.link || null };
   }
-  if (data.outcome !== undefined) {
-    properties["성과/결과"] = {
-      rich_text: data.outcome ? [{ text: { content: data.outcome } }] : [],
-    };
-  }
-  if (data.rating !== undefined) {
-    properties["성과등급"] = data.rating ? { select: { name: data.rating } } : { select: null };
-  }
-
   await notion.pages.update({
     page_id: pageId,
     properties,
