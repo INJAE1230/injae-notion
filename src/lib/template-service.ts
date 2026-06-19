@@ -59,7 +59,8 @@ export async function getAllTemplates(): Promise<RecurringTemplate[]> {
     };
     if (cursor) query.start_cursor = cursor;
 
-    const response = await (notion.databases as unknown as { query: (args: Record<string, unknown>) => Promise<unknown> }).query.call(notion.databases, query);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const response = await (notion.databases as any).query(query);
     const typed = response as {
       results: NotionPage[];
       has_more: boolean;
