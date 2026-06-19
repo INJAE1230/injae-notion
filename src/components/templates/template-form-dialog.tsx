@@ -37,10 +37,12 @@ import type {
 
 export function TemplateFormDialog({
   template,
+  initialData,
   open,
   onClose,
 }: {
   template?: RecurringTemplate;
+  initialData?: Partial<RecurringTemplateFormData>;
   open: boolean;
   onClose: () => void;
 }) {
@@ -48,14 +50,14 @@ export function TemplateFormDialog({
   const isEdit = !!template;
 
   const [form, setForm] = useState<RecurringTemplateFormData>({
-    name: template?.name || "",
-    frequency: template?.frequency || "매주",
-    dayValue: template?.dayValue ?? 1,
-    defaultProject: template?.defaultProject || "업무",
-    defaultStatus: template?.defaultStatus || "예정",
-    defaultTags: template?.defaultTags || [],
-    defaultHours: template?.defaultHours ?? null,
-    content: template?.content || "",
+    name: template?.name || initialData?.name || "",
+    frequency: template?.frequency || initialData?.frequency || "매주",
+    dayValue: template?.dayValue ?? initialData?.dayValue ?? 1,
+    defaultProject: template?.defaultProject || initialData?.defaultProject || "업무",
+    defaultStatus: template?.defaultStatus || initialData?.defaultStatus || "예정",
+    defaultTags: template?.defaultTags || initialData?.defaultTags || [],
+    defaultHours: template?.defaultHours ?? initialData?.defaultHours ?? null,
+    content: template?.content || initialData?.content || "",
     active: template?.active ?? true,
   });
   const [loading, setLoading] = useState(false);
@@ -101,7 +103,9 @@ export function TemplateFormDialog({
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "템플릿 수정" : "템플릿 추가"}</DialogTitle>
+          <DialogTitle>
+            {isEdit ? "템플릿 수정" : initialData ? "갤러리에서 추가" : "템플릿 추가"}
+          </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">

@@ -1,4 +1,5 @@
 export type Frequency = "매주" | "매월";
+export type PresetCategory = "정기 보고" | "정산/회계" | "회의" | "관리 업무";
 export type Project = "업무" | "개인일정";
 export type Status = "예정" | "진행 중" | "완료";
 export type Tag = "회의" | "개발" | "기획" | "리뷰" | "버그";
@@ -117,6 +118,20 @@ export interface RecurringTemplate {
   defaultHours: number | null;
   content: string;
   active: boolean;
+}
+
+export interface TemplatePreset {
+  id: string;
+  category: PresetCategory;
+  name: string;
+  description: string;
+  frequency: Frequency;
+  dayValue: number;
+  defaultProject: Project;
+  defaultStatus: Status;
+  defaultTags: Tag[];
+  defaultHours: number | null;
+  content: string;
 }
 
 export interface RecurringTemplateFormData {

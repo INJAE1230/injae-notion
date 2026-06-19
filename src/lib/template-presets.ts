@@ -1,0 +1,178 @@
+import type { TemplatePreset, PresetCategory } from "./types";
+
+export const TEMPLATE_PRESETS: TemplatePreset[] = [
+  // 정기 보고
+  {
+    id: "weekly-report",
+    category: "정기 보고",
+    name: "주간업무보고",
+    description: "한 주간의 업무 현황과 다음 주 계획을 정리하는 보고서",
+    frequency: "매주",
+    dayValue: 5,
+    defaultProject: "업무",
+    defaultStatus: "예정",
+    defaultTags: ["기획"],
+    defaultHours: 1,
+    content: "이번 주 업무 현황 및 다음 주 계획 작성",
+  },
+  {
+    id: "monthly-performance",
+    category: "정기 보고",
+    name: "월간실적보고",
+    description: "월간 실적 데이터를 정리하고 경영진에게 보고",
+    frequency: "매월",
+    dayValue: 25,
+    defaultProject: "업무",
+    defaultStatus: "예정",
+    defaultTags: ["기획"],
+    defaultHours: 2,
+    content: "월간 실적 정리 및 보고서 작성",
+  },
+  {
+    id: "daily-report",
+    category: "정기 보고",
+    name: "일일업무일지",
+    description: "매주 금요일에 한 주간의 일일 업무를 정리",
+    frequency: "매주",
+    dayValue: 5,
+    defaultProject: "업무",
+    defaultStatus: "예정",
+    defaultTags: ["기획"],
+    defaultHours: 0.5,
+    content: "금주 일일 업무 내역 정리",
+  },
+
+  // 정산/회계
+  {
+    id: "royalty-settlement",
+    category: "정산/회계",
+    name: "체인점 로얄티 정산",
+    description: "체인점별 로얄티를 계산하고 송금 처리",
+    frequency: "매월",
+    dayValue: 10,
+    defaultProject: "업무",
+    defaultStatus: "예정",
+    defaultTags: ["기획"],
+    defaultHours: 3,
+    content: "체인점별 로얄티 정산 및 송금 처리",
+  },
+  {
+    id: "tax-filing",
+    category: "정산/회계",
+    name: "세금 신고",
+    description: "부가세/원천세 신고 자료 준비 및 제출",
+    frequency: "매월",
+    dayValue: 25,
+    defaultProject: "업무",
+    defaultStatus: "예정",
+    defaultTags: ["기획"],
+    defaultHours: 2,
+    content: "부가세/원천세 신고 자료 준비 및 제출",
+  },
+  {
+    id: "salary-processing",
+    category: "정산/회계",
+    name: "급여 처리",
+    description: "직원 급여 계산 및 이체 처리",
+    frequency: "매월",
+    dayValue: 20,
+    defaultProject: "업무",
+    defaultStatus: "예정",
+    defaultTags: ["기획"],
+    defaultHours: 2,
+    content: "급여 계산, 4대보험 정산, 이체 처리",
+  },
+
+  // 회의
+  {
+    id: "weekly-standup",
+    category: "회의",
+    name: "주간 스탠드업",
+    description: "매주 월요일 아침 팀 업무 공유 및 이슈 논의",
+    frequency: "매주",
+    dayValue: 1,
+    defaultProject: "업무",
+    defaultStatus: "예정",
+    defaultTags: ["회의"],
+    defaultHours: 0.5,
+    content: "주간 업무 공유 및 이슈 논의",
+  },
+  {
+    id: "monthly-all-hands",
+    category: "회의",
+    name: "월간 전체회의",
+    description: "전사 차원의 월간 성과 공유 및 공지사항 전달",
+    frequency: "매월",
+    dayValue: 1,
+    defaultProject: "업무",
+    defaultStatus: "예정",
+    defaultTags: ["회의"],
+    defaultHours: 1.5,
+    content: "월간 성과 공유 및 전사 공지사항 전달",
+  },
+  {
+    id: "weekly-1on1",
+    category: "회의",
+    name: "1:1 미팅",
+    description: "팀장과의 주간 1:1 미팅",
+    frequency: "매주",
+    dayValue: 3,
+    defaultProject: "업무",
+    defaultStatus: "예정",
+    defaultTags: ["회의"],
+    defaultHours: 0.5,
+    content: "업무 진행 상황 공유 및 피드백",
+  },
+
+  // 관리 업무
+  {
+    id: "inventory-check",
+    category: "관리 업무",
+    name: "재고 실사",
+    description: "실물 재고와 시스템 데이터를 대조 확인",
+    frequency: "매월",
+    dayValue: 1,
+    defaultProject: "업무",
+    defaultStatus: "예정",
+    defaultTags: ["기획"],
+    defaultHours: 4,
+    content: "재고 현황 실사 및 시스템 데이터 대조",
+  },
+  {
+    id: "code-review-roundup",
+    category: "관리 업무",
+    name: "코드 리뷰 정리",
+    description: "주간 코드 리뷰 피드백 정리 및 반영 확인",
+    frequency: "매주",
+    dayValue: 5,
+    defaultProject: "업무",
+    defaultStatus: "예정",
+    defaultTags: ["리뷰", "개발"],
+    defaultHours: 1,
+    content: "주간 코드 리뷰 피드백 정리 및 반영 확인",
+  },
+  {
+    id: "backup-check",
+    category: "관리 업무",
+    name: "백업 점검",
+    description: "서버 및 데이터 백업 상태 점검",
+    frequency: "매주",
+    dayValue: 1,
+    defaultProject: "업무",
+    defaultStatus: "예정",
+    defaultTags: ["개발"],
+    defaultHours: 0.5,
+    content: "서버/DB 백업 상태 확인 및 복원 테스트",
+  },
+];
+
+export function getPresetsByCategory(): Record<PresetCategory, TemplatePreset[]> {
+  const grouped: Record<string, TemplatePreset[]> = {};
+  for (const preset of TEMPLATE_PRESETS) {
+    if (!grouped[preset.category]) {
+      grouped[preset.category] = [];
+    }
+    grouped[preset.category].push(preset);
+  }
+  return grouped as Record<PresetCategory, TemplatePreset[]>;
+}
