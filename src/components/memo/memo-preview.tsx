@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, X, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Check, X, Loader2, Pencil, Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -53,7 +53,16 @@ export function MemoPreview({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      toast.success(`${data.count}건의 업무가 저장되었습니다.`);
+      if (data.appended && data.appended.length > 0) {
+        const appendMsg = data.appended.map((a: { title: string }) => `"${a.title}"`).join(", ");
+        const newCount = data.count - data.appended.length;
+        const parts = [];
+        if (data.appended.length > 0) parts.push(`${appendMsg}에 내용 추가`);
+        if (newCount > 0) parts.push(`${newCount}건 새로 저장`);
+        toast.success(parts.join(", "));
+      } else {
+        toast.success(`${data.count}건의 업무가 저장되었습니다.`);
+      }
       onReset();
       router.refresh();
     } catch (e) {
@@ -113,24 +122,31 @@ export function MemoPreview({
             className="rounded-lg border p-3 space-y-2 hover:border-indigo-300 transition-colors"
           >
             <div className="flex items-start justify-between gap-2">
-              {editingIdx === idx ? (
-                <Input
-                  value={entry.title}
-                  onChange={(e) => updateEntry(idx, "title", e.target.value)}
-                  onBlur={() => setEditingIdx(null)}
-                  onKeyDown={(e) => e.key === "Enter" && setEditingIdx(null)}
-                  autoFocus
-                  className="text-sm font-medium"
-                />
-              ) : (
-                <span
-                  className="text-sm font-medium cursor-pointer hover:text-indigo-600"
-                  onClick={() => setEditingIdx(idx)}
-                >
-                  {entry.title}
-                  <Pencil className="inline h-3 w-3 ml-1 text-muted-foreground" />
-                </span>
-              )}
+              <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                {entry.appendTo && (
+                  <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 shrink-0 text-[10px]">
+                    <Plus className="h-2.5 w-2.5 mr-0.5" />추가
+                  </Badge>
+                )}
+                {editingIdx === idx ? (
+                  <Input
+                    value={entry.title}
+                    onChange={(e) => updateEntry(idx, "title", e.target.value)}
+                    onBlur={() => setEditingIdx(null)}
+                    onKeyDown={(e) => e.key === "Enter" && setEditingIdx(null)}
+                    autoFocus
+                    className="text-sm font-medium"
+                  />
+                ) : (
+                  <span
+                    className="text-sm font-medium cursor-pointer hover:text-indigo-600"
+                    onClick={() => setEditingIdx(idx)}
+                  >
+                    {entry.title}
+                    <Pencil className="inline h-3 w-3 ml-1 text-muted-foreground" />
+                  </span>
+                )}
+              </div>
               <Button
                 variant="ghost"
                 size="icon"

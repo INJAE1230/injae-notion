@@ -55,6 +55,7 @@ export interface WorkLogFormData {
   outcome?: string | null;
   rating?: AchievementRating | null;
   attachments?: FileAttachment[];
+  appendTo?: string | null;
 }
 
 export interface DashboardStats {
