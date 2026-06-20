@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, differenceInDays, eachDayOfInterval, parseISO } from "date-fns";
-import { FileText, Copy, Download, Loader2, Check, Hash, ClipboardCopy } from "lucide-react";
+import { FileText, Copy, Download, Loader2, Check, Hash, ClipboardCopy, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -42,6 +42,8 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copiedMd, setCopiedMd] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const reportRef = useRef<HTMLDivElement>(null);
 
   const periodInfo = useMemo(() => {
     if (!dateFrom || !dateTo) return null;
@@ -152,6 +154,58 @@ export default function ReportsPage() {
     }
 
     return sections;
+  }
+
+  async function handleDownloadPdf() {
+    if (!report || !reportRef.current) return;
+    setPdfLoading(true);
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+      const { jsPDF } = await import("jspdf");
+
+      const canvas = await html2canvas(reportRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+      });
+
+      const imgWidth = 190;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const pdf = new jsPDF("p", "mm", "a4");
+
+      let yOffset = 10;
+      const pageHeight = 277;
+
+      if (imgHeight <= pageHeight) {
+        pdf.addImage(canvas.toDataURL("image/png"), "PNG", 10, yOffset, imgWidth, imgHeight);
+      } else {
+        let remaining = canvas.height;
+        let srcY = 0;
+        let page = 0;
+
+        while (remaining > 0) {
+          if (page > 0) pdf.addPage();
+          const sliceHeight = Math.min(remaining, (pageHeight * canvas.width) / imgWidth);
+          const sliceCanvas = document.createElement("canvas");
+          sliceCanvas.width = canvas.width;
+          sliceCanvas.height = sliceHeight;
+          const ctx = sliceCanvas.getContext("2d")!;
+          ctx.drawImage(canvas, 0, srcY, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
+          const sliceImgHeight = (sliceHeight * imgWidth) / canvas.width;
+          pdf.addImage(sliceCanvas.toDataURL("image/png"), "PNG", 10, 10, imgWidth, sliceImgHeight);
+          srcY += sliceHeight;
+          remaining -= sliceHeight;
+          page++;
+        }
+      }
+
+      pdf.save(`${report.title.replace(/[\[\]]/g, "")}.pdf`);
+      toast.success("PDF가 다운로드되었습니다");
+    } catch {
+      toast.error("PDF 생성에 실패했습니다");
+    } finally {
+      setPdfLoading(false);
+    }
   }
 
   function applyPreset(idx: number) {
@@ -266,7 +320,7 @@ export default function ReportsPage() {
         });
 
         return (
-          <div className="space-y-4">
+          <div className="space-y-4" ref={reportRef}>
             <Card>
               <CardHeader>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -282,7 +336,11 @@ export default function ReportsPage() {
                     </Button>
                     <Button variant="outline" size="sm" onClick={handleDownload}>
                       <Download className="h-3.5 w-3.5 mr-1" />
-                      다운로드
+                      TXT
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleDownloadPdf} disabled={pdfLoading}>
+                      {pdfLoading ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <FileDown className="h-3.5 w-3.5 mr-1" />}
+                      PDF
                     </Button>
                   </div>
                 </div>
