@@ -1,20 +1,23 @@
 import { getAllWorkLogs } from "@/lib/notion-service";
 import { computeStats } from "@/lib/stats";
+import { getKSTNow, getKSTToday } from "@/lib/date-utils";
 import { SummaryCards } from "@/components/dashboard/summary-cards";
 import { StatusChart } from "@/components/dashboard/status-chart";
+import { PriorityChart } from "@/components/dashboard/priority-chart";
 import { ProjectChart } from "@/components/dashboard/project-chart";
 import { WeeklyChart } from "@/components/dashboard/weekly-chart";
 import { RecentLogs } from "@/components/dashboard/recent-logs";
 import { QuickMemoInput } from "@/components/memo/quick-memo-input";
 import { TodayTasks } from "@/components/dashboard/today-tasks";
 import { UpcomingDeadlines } from "@/components/dashboard/upcoming-deadlines";
+import { DeadlineAlert } from "@/components/dashboard/deadline-alert";
 import { TemplateQuickActions } from "@/components/dashboard/template-quick-actions";
 import { templateDatabaseId } from "@/lib/notion";
 
 export const dynamic = "force-dynamic";
 
 function getGreeting() {
-  const hour = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" })).getHours();
+  const hour = getKSTNow().getHours();
   if (hour < 6) return "늦은 밤이에요";
   if (hour < 12) return "좋은 아침이에요";
   if (hour < 18) return "좋은 오후에요";
@@ -26,7 +29,7 @@ export default async function DashboardPage() {
   const stats = computeStats(logs);
   const recentLogs = logs.slice(0, 5);
 
-  const todayStr = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" })).toISOString().split("T")[0];
+  const todayStr = getKSTToday();
   const todayLogs = logs.filter((log) => log.date === todayStr);
 
   const today = new Date().toLocaleDateString("ko-KR", {
@@ -55,6 +58,9 @@ export default async function DashboardPage() {
       {/* 반복 업무 */}
       {templateDatabaseId && <TemplateQuickActions />}
 
+      {/* 마감 알림 */}
+      <DeadlineAlert logs={logs} />
+
       {/* 오늘의 업무 + 마감 임박 */}
       <div className="grid gap-6 lg:grid-cols-2">
         <TodayTasks logs={todayLogs} />
@@ -66,6 +72,7 @@ export default async function DashboardPage() {
         <ProjectChart stats={stats} />
         <StatusChart stats={stats} />
       </div>
+      <PriorityChart stats={stats} />
 
       <WeeklyChart stats={stats} />
 

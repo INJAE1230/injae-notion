@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { parseMemoText } from "@/lib/ai-parser";
+import { getKSTToday } from "@/lib/date-utils";
 
 export async function POST(request: Request) {
   try {
@@ -12,7 +13,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const today = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" })).toISOString().split("T")[0];
+    const today = getKSTToday();
     const entries = await parseMemoText(text.trim(), today);
 
     return NextResponse.json({ entries, originalText: text.trim() });

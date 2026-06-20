@@ -78,19 +78,36 @@ function ActionButton({
   );
 }
 
-export function WeeklyReview({ allLogs }: WeeklyReviewProps) {
+export function WeeklyReview({ allLogs: initialLogs }: WeeklyReviewProps) {
   const router = useRouter();
+  const [logs, setLogs] = useState(initialLogs);
   const [weekOffset, setWeekOffset] = useState(0);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [processedIds, setProcessedIds] = useState<Set<string>>(new Set());
+  const [refreshing, setRefreshing] = useState(false);
 
   const { start, end } = useMemo(() => getWeekRange(weekOffset), [weekOffset]);
-  const review = useMemo(() => categorizeForReview(allLogs, start, end), [allLogs, start, end]);
+  const review = useMemo(() => categorizeForReview(logs, start, end), [logs, start, end]);
+
+  async function refreshData() {
+    setRefreshing(true);
+    try {
+      const res = await fetch("/api/logs");
+      if (res.ok) {
+        const data = await res.json();
+        setLogs(data);
+        setProcessedIds(new Set());
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   const handleAction = async (id: string, status: Status, message: string) => {
     setLoadingId(id);
     try {
       await updateStatus(id, status);
+      setLogs((prev) => prev.map((l) => l.id === id ? { ...l, status } : l));
       setProcessedIds((prev) => new Set(prev).add(id));
       toast.success(message);
     } catch {
@@ -105,6 +122,7 @@ export function WeeklyReview({ allLogs }: WeeklyReviewProps) {
     try {
       const res = await fetch(`/api/logs/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
+      setLogs((prev) => prev.filter((l) => l.id !== id));
       setProcessedIds((prev) => new Set(prev).add(id));
       toast.success("업무가 삭제되었습니다");
     } catch {
@@ -129,13 +147,13 @@ export function WeeklyReview({ allLogs }: WeeklyReviewProps) {
       {/* Week Navigation */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => { setWeekOffset(weekOffset - 1); setProcessedIds(new Set()); }}>
+          <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => { setWeekOffset((o) => o - 1); setProcessedIds(new Set()); }}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <h2 className="text-lg font-semibold min-w-[200px] text-center">
             {start} ~ {end}
           </h2>
-          <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => { setWeekOffset(weekOffset + 1); setProcessedIds(new Set()); }}>
+          <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => { setWeekOffset((o) => o + 1); setProcessedIds(new Set()); }}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
@@ -343,7 +361,8 @@ export function WeeklyReview({ allLogs }: WeeklyReviewProps) {
 
       {/* Refresh Button */}
       <div className="flex justify-center pb-8">
-        <Button variant="outline" onClick={() => router.refresh()}>
+        <Button variant="outline" onClick={refreshData} disabled={refreshing}>
+          {refreshing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
           리뷰 새로고침
         </Button>
       </div>

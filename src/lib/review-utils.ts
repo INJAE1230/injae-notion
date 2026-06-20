@@ -1,9 +1,6 @@
 import { startOfWeek, endOfWeek, addWeeks, format } from "date-fns";
+import { getKSTNow } from "./date-utils";
 import type { WorkLog } from "./types";
-
-function getKSTNow(): Date {
-  return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
-}
 
 export function getWeekRange(weekOffset: number = 0) {
   const now = getKSTNow();

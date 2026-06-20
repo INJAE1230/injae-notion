@@ -37,7 +37,12 @@ export async function POST(request: Request) {
       );
     }
 
-    const blob = await put(file.name, file, {
+    const ext = file.name.includes(".")
+      ? "." + file.name.split(".").pop()
+      : "";
+    const safeName = `${crypto.randomUUID()}${ext}`;
+
+    const blob = await put(safeName, file, {
       access: "public",
     });
 

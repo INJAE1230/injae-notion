@@ -95,6 +95,12 @@ function buildFilter(filters: WorkLogFilters) {
       });
     }
   }
+  if (filters.search) {
+    conditions.push({
+      property: "업무",
+      title: { contains: filters.search },
+    });
+  }
 
   if (conditions.length === 0) return undefined;
   if (conditions.length === 1) return conditions[0];
@@ -119,18 +125,7 @@ export async function queryWorkLogs(
   const response = await (notion.dataSources as Record<string, Function>).query(query);
   const results = (response as { results: NotionPage[] }).results;
 
-  let logs = results.map(mapPageToWorkLog);
-
-  if (filters?.search) {
-    const keyword = filters.search.toLowerCase();
-    logs = logs.filter(
-      (log) =>
-        log.title.toLowerCase().includes(keyword) ||
-        log.content.toLowerCase().includes(keyword)
-    );
-  }
-
-  return logs;
+  return results.map(mapPageToWorkLog);
 }
 
 export async function getAllWorkLogs(): Promise<WorkLog[]> {

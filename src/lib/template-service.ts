@@ -1,5 +1,5 @@
 import { notion, templateDatabaseId, getTemplateDataSourceId } from "./notion";
-import { createWorkLog } from "./notion-service";
+import { createWorkLog, queryWorkLogs } from "./notion-service";
 import type {
   RecurringTemplate,
   RecurringTemplateFormData,
@@ -151,16 +151,7 @@ export async function deleteTemplate(pageId: string): Promise<void> {
   } as Parameters<typeof notion.pages.update>[0]);
 }
 
-function getKSTNow(): Date {
-  return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
-}
-
-function formatDate(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
+import { getKSTNow, formatDate } from "./date-utils";
 
 function getWeekDate(dayOfWeek: number): string {
   const now = getKSTNow();
@@ -187,7 +178,7 @@ function getMonthDate(dayOfMonth: number): string {
 export async function generateWorkLogs(
   mode: "이번주" | "이번달",
   templateIds?: string[]
-): Promise<{ generated: number; titles: string[] }> {
+): Promise<{ generated: number; titles: string[]; skipped: string[] }> {
   let templates = await getAllTemplates();
   templates = templates.filter((t) => t.active);
 
@@ -203,12 +194,23 @@ export async function generateWorkLogs(
   }
 
   const titles: string[] = [];
+  const skipped: string[] = [];
 
   for (const tmpl of templates) {
     const date =
       mode === "이번주"
         ? getWeekDate(tmpl.dayValue)
         : getMonthDate(tmpl.dayValue);
+
+    const existing = await queryWorkLogs({
+      search: tmpl.name,
+      dateFrom: date,
+      dateTo: date,
+    });
+    if (existing.some((log) => log.title === tmpl.name)) {
+      skipped.push(tmpl.name);
+      continue;
+    }
 
     const formData: WorkLogFormData = {
       title: tmpl.name,
@@ -225,5 +227,5 @@ export async function generateWorkLogs(
     titles.push(tmpl.name);
   }
 
-  return { generated: titles.length, titles };
+  return { generated: titles.length, titles, skipped };
 }
