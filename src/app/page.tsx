@@ -17,11 +17,16 @@ import { templateDatabaseId } from "@/lib/notion";
 export const dynamic = "force-dynamic";
 
 function getGreeting() {
-  const hour = getKSTNow().getHours();
-  if (hour < 6) return "늦은 밤이에요";
-  if (hour < 12) return "좋은 아침이에요";
+  const now = getKSTNow();
+  const hour = now.getHours();
+  const day = now.getDay();
+  const isWeekend = day === 0 || day === 6;
+
+  if (isWeekend) return "쉬는 날이에요";
+  if (hour < 10) return "좋은 아침이에요";
   if (hour < 18) return "좋은 오후에요";
-  return "수고했어요";
+  if (hour < 21) return "오늘도 힘내세요";
+  return "퇴근 시간이에요";
 }
 
 export default async function DashboardPage() {

@@ -111,12 +111,13 @@ export function CalendarView({ logs }: CalendarViewProps) {
               const isToday = dateStr === todayStr;
               const isSelected = dateStr === selectedDate;
               const dayOfWeek = (firstDay + day - 1) % 7;
+              const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
 
               return (
                 <div
                   key={dateStr}
                   className={`min-h-[60px] sm:min-h-[80px] border-t p-1 cursor-pointer transition-colors ${
-                    isSelected ? "bg-primary/10" : "hover:bg-muted/50"
+                    isSelected ? "bg-primary/10" : isWeekend ? "bg-muted/30 hover:bg-muted/50" : "hover:bg-muted/50"
                   }`}
                   onClick={() => setSelectedDate(dateStr)}
                 >

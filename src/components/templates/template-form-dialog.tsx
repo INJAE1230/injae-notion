@@ -169,15 +169,22 @@ export function TemplateFormDialog({
                 <div className="flex flex-wrap gap-1.5">
                   {Object.entries(DAY_OF_WEEK_LABELS).map(([val, label]) => {
                     const day = Number(val);
+                    const isWeekend = day === 0 || day === 6;
                     const selected = form.dayValues.includes(day);
                     return (
                       <Badge
                         key={val}
                         variant={selected ? "default" : "outline"}
                         className={`cursor-pointer select-none px-3 py-1.5 text-xs ${
-                          selected ? "" : "text-muted-foreground"
+                          isWeekend
+                            ? "opacity-40 line-through"
+                            : selected ? "" : "text-muted-foreground"
                         }`}
                         onClick={() => {
+                          if (isWeekend) {
+                            toast.info("토/일은 휴무일입니다. 주말 출근 시 수동으로 추가하세요.");
+                            return;
+                          }
                           const next = selected
                             ? form.dayValues.filter((d) => d !== day)
                             : [...form.dayValues, day].sort((a, b) => a - b);

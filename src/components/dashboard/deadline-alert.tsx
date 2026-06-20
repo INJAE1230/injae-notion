@@ -33,6 +33,12 @@ export function DeadlineAlert({ logs }: { logs: WorkLog[] }) {
   });
 
   useEffect(() => {
+    const now = new Date();
+    const hour = now.getHours();
+    const isWorkingHours = hour >= 10 && hour < 21;
+
+    if (!isWorkingHours) return;
+
     if ((overdue.length > 0 || todayDue.length > 0) && "Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
     }
