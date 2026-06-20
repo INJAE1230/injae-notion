@@ -28,9 +28,11 @@ import type { RecurringTemplate } from "@/lib/types";
 
 function formatDay(template: RecurringTemplate): string {
   if (template.frequency === "매주") {
-    return DAY_OF_WEEK_LABELS[template.dayValue] || `${template.dayValue}`;
+    return template.dayValues
+      .map((d) => (DAY_OF_WEEK_LABELS[d] || `${d}`).replace("요일", ""))
+      .join(", ");
   }
-  return `${template.dayValue}일`;
+  return template.dayValues.map((d) => `${d}일`).join(", ");
 }
 
 export function TemplateTable({

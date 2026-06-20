@@ -117,7 +117,7 @@ export interface RecurringTemplate {
   id: string;
   name: string;
   frequency: Frequency;
-  dayValue: number;
+  dayValues: number[];
   defaultProject: Project;
   defaultStatus: Status;
   defaultTags: Tag[];
@@ -132,7 +132,7 @@ export interface TemplatePreset {
   name: string;
   description: string;
   frequency: Frequency;
-  dayValue: number;
+  dayValues: number[];
   defaultProject: Project;
   defaultStatus: Status;
   defaultTags: Tag[];
@@ -143,7 +143,7 @@ export interface TemplatePreset {
 export interface RecurringTemplateFormData {
   name: string;
   frequency: Frequency;
-  dayValue: number;
+  dayValues: number[];
   defaultProject: Project;
   defaultStatus: Status;
   defaultTags: Tag[];

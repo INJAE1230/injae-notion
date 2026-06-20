@@ -52,7 +52,7 @@ export function TemplateFormDialog({
   const [form, setForm] = useState<RecurringTemplateFormData>({
     name: template?.name || initialData?.name || "",
     frequency: template?.frequency || initialData?.frequency || "매주",
-    dayValue: template?.dayValue ?? initialData?.dayValue ?? 1,
+    dayValues: template?.dayValues || initialData?.dayValues || [1],
     defaultProject: template?.defaultProject || initialData?.defaultProject || "업무",
     defaultStatus: template?.defaultStatus || initialData?.defaultStatus || "예정",
     defaultTags: template?.defaultTags || initialData?.defaultTags || [],
@@ -75,6 +75,10 @@ export function TemplateFormDialog({
     e.preventDefault();
     if (!form.name.trim()) {
       toast.error("템플릿 이름을 입력해주세요");
+      return;
+    }
+    if (form.dayValues.length === 0) {
+      toast.error("요일을 하나 이상 선택해주세요");
       return;
     }
 
@@ -128,7 +132,7 @@ export function TemplateFormDialog({
                   setForm({
                     ...form,
                     frequency: freq,
-                    dayValue: freq === "매주" ? 1 : 1,
+                    dayValues: [1],
                   });
                 }}
               >
@@ -147,31 +151,51 @@ export function TemplateFormDialog({
 
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                {form.frequency === "매주" ? "요일" : "날짜"}
+                {form.frequency === "매주" ? "요일 (복수 선택 가능)" : "날짜"}
               </label>
-              <Select
-                value={String(form.dayValue)}
-                onValueChange={(v) =>
-                  setForm({ ...form, dayValue: Number(v) })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {form.frequency === "매주"
-                    ? Object.entries(DAY_OF_WEEK_LABELS).map(([val, label]) => (
-                        <SelectItem key={val} value={val}>
-                          {label}
-                        </SelectItem>
-                      ))
-                    : Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-                        <SelectItem key={d} value={String(d)}>
-                          {d}일
-                        </SelectItem>
-                      ))}
-                </SelectContent>
-              </Select>
+              {form.frequency === "매주" ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {Object.entries(DAY_OF_WEEK_LABELS).map(([val, label]) => {
+                    const day = Number(val);
+                    const selected = form.dayValues.includes(day);
+                    return (
+                      <Badge
+                        key={val}
+                        variant={selected ? "default" : "outline"}
+                        className={`cursor-pointer select-none px-3 py-1.5 text-xs ${
+                          selected ? "" : "text-muted-foreground"
+                        }`}
+                        onClick={() => {
+                          const next = selected
+                            ? form.dayValues.filter((d) => d !== day)
+                            : [...form.dayValues, day].sort((a, b) => a - b);
+                          if (next.length > 0) setForm({ ...form, dayValues: next });
+                        }}
+                      >
+                        {(label as string).replace("요일", "")}
+                      </Badge>
+                    );
+                  })}
+                </div>
+              ) : (
+                <Select
+                  value={String(form.dayValues[0])}
+                  onValueChange={(v) =>
+                    setForm({ ...form, dayValues: [Number(v)] })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                      <SelectItem key={d} value={String(d)}>
+                        {d}일
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           </div>
 

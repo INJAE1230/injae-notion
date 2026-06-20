@@ -20,12 +20,21 @@ function getTemplateDbId(): string {
   return templateDatabaseId;
 }
 
+function parseDayValues(raw: string | null | undefined, fallback: number | null | undefined): number[] {
+  if (raw) {
+    const parsed = raw.split(",").map((s) => Number(s.trim())).filter((n) => !isNaN(n));
+    if (parsed.length > 0) return parsed;
+  }
+  return [fallback ?? 1];
+}
+
 function mapPageToTemplate(page: NotionPage): RecurringTemplate {
   const p = page.properties as Record<string, Record<string, unknown>>;
 
   const titleArr = p["템플릿명"]?.title as { plain_text: string }[] | undefined;
   const freqObj = p["반복주기"]?.select as { name: string } | null | undefined;
   const dayNum = p["반복일"]?.number as number | null | undefined;
+  const dayListArr = p["반복요일목록"]?.rich_text as { plain_text: string }[] | undefined;
   const projObj = p["기본프로젝트"]?.select as { name: string } | null | undefined;
   const statusObj = p["기본상태"]?.select as { name: string } | null | undefined;
   const tagsArr = p["기본태그"]?.multi_select as { name: string }[] | undefined;
@@ -37,7 +46,7 @@ function mapPageToTemplate(page: NotionPage): RecurringTemplate {
     id: page.id,
     name: titleArr?.[0]?.plain_text || "",
     frequency: (freqObj?.name || "매주") as Frequency,
-    dayValue: dayNum ?? 1,
+    dayValues: parseDayValues(dayListArr?.[0]?.plain_text, dayNum),
     defaultProject: (projObj?.name || "업무") as RecurringTemplate["defaultProject"],
     defaultStatus: (statusObj?.name || "예정") as RecurringTemplate["defaultStatus"],
     defaultTags: (tagsArr?.map((t) => t.name) || []) as Tag[],
@@ -72,13 +81,30 @@ export async function getAllTemplates(): Promise<RecurringTemplate[]> {
   return allResults.map(mapPageToTemplate);
 }
 
+let schemaReady = false;
+
+async function ensureDayListProperty() {
+  if (schemaReady) return;
+  try {
+    await (notion.databases as Record<string, Function>).update({
+      database_id: getTemplateDbId(),
+      properties: { "반복요일목록": { rich_text: {} } },
+    });
+  } catch {
+    // already exists or no permission
+  }
+  schemaReady = true;
+}
+
 export async function createTemplate(data: RecurringTemplateFormData): Promise<string> {
   const dbId = getTemplateDbId();
+  await ensureDayListProperty();
 
   const properties: Record<string, unknown> = {
     "템플릿명": { title: [{ text: { content: data.name } }] },
     "반복주기": { select: { name: data.frequency } },
-    "반복일": { number: data.dayValue },
+    "반복일": { number: data.dayValues[0] },
+    "반복요일목록": { rich_text: [{ text: { content: data.dayValues.join(",") } }] },
     "기본프로젝트": { select: { name: data.defaultProject } },
     "기본상태": { select: { name: data.defaultStatus } },
     "업무내용": { rich_text: [{ text: { content: data.content || "" } }] },
@@ -114,8 +140,9 @@ export async function updateTemplate(
   if (data.frequency !== undefined) {
     properties["반복주기"] = { select: { name: data.frequency } };
   }
-  if (data.dayValue !== undefined) {
-    properties["반복일"] = { number: data.dayValue };
+  if (data.dayValues !== undefined) {
+    properties["반복일"] = { number: data.dayValues[0] };
+    properties["반복요일목록"] = { rich_text: [{ text: { content: data.dayValues.join(",") } }] };
   }
   if (data.defaultProject !== undefined) {
     properties["기본프로젝트"] = { select: { name: data.defaultProject } };
@@ -197,34 +224,34 @@ export async function generateWorkLogs(
   const skipped: string[] = [];
 
   for (const tmpl of templates) {
-    const date =
-      mode === "이번주"
-        ? getWeekDate(tmpl.dayValue)
-        : getMonthDate(tmpl.dayValue);
+    for (const day of tmpl.dayValues) {
+      const date =
+        mode === "이번주" ? getWeekDate(day) : getMonthDate(day);
 
-    const existing = await queryWorkLogs({
-      search: tmpl.name,
-      dateFrom: date,
-      dateTo: date,
-    });
-    if (existing.some((log) => log.title === tmpl.name)) {
-      skipped.push(tmpl.name);
-      continue;
+      const existing = await queryWorkLogs({
+        search: tmpl.name,
+        dateFrom: date,
+        dateTo: date,
+      });
+      if (existing.some((log) => log.title === tmpl.name)) {
+        skipped.push(tmpl.name);
+        continue;
+      }
+
+      const formData: WorkLogFormData = {
+        title: tmpl.name,
+        date,
+        project: tmpl.defaultProject,
+        status: tmpl.defaultStatus,
+        content: tmpl.content,
+        tags: tmpl.defaultTags,
+        hours: tmpl.defaultHours,
+        link: null,
+      };
+
+      await createWorkLog(formData, { inputSource: "웹" });
+      titles.push(tmpl.name);
     }
-
-    const formData: WorkLogFormData = {
-      title: tmpl.name,
-      date,
-      project: tmpl.defaultProject,
-      status: tmpl.defaultStatus,
-      content: tmpl.content,
-      tags: tmpl.defaultTags,
-      hours: tmpl.defaultHours,
-      link: null,
-    };
-
-    await createWorkLog(formData, { inputSource: "웹" });
-    titles.push(tmpl.name);
   }
 
   return { generated: titles.length, titles, skipped };

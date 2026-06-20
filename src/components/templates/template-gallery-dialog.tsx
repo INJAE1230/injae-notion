@@ -18,9 +18,13 @@ import type { RecurringTemplateFormData, PresetCategory, TemplatePreset } from "
 
 function formatPresetDay(preset: TemplatePreset): string {
   if (preset.frequency === "매주") {
-    return `${preset.frequency} ${DAY_OF_WEEK_LABELS[preset.dayValue] || ""}`;
+    const days = preset.dayValues
+      .map((d) => DAY_OF_WEEK_LABELS[d] || "")
+      .filter(Boolean)
+      .join(", ");
+    return `${preset.frequency} ${days}`;
   }
-  return `${preset.frequency} ${preset.dayValue}일`;
+  return `${preset.frequency} ${preset.dayValues.map((d) => `${d}일`).join(", ")}`;
 }
 
 export function TemplateGalleryDialog({
@@ -39,7 +43,7 @@ export function TemplateGalleryDialog({
     onSelectPreset({
       name: preset.name,
       frequency: preset.frequency,
-      dayValue: preset.dayValue,
+      dayValues: preset.dayValues,
       defaultProject: preset.defaultProject,
       defaultStatus: preset.defaultStatus,
       defaultTags: preset.defaultTags,
