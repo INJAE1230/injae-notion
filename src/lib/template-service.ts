@@ -81,35 +81,39 @@ export async function getAllTemplates(): Promise<RecurringTemplate[]> {
   return allResults.map(mapPageToTemplate);
 }
 
-let schemaReady = false;
+let dayListPropertyReady: boolean | null = null;
 
-async function ensureDayListProperty() {
-  if (schemaReady) return;
+async function ensureDayListProperty(): Promise<boolean> {
+  if (dayListPropertyReady !== null) return dayListPropertyReady;
   try {
-    await (notion.databases as Record<string, Function>).update({
+    await notion.databases.update({
       database_id: getTemplateDbId(),
       properties: { "반복요일목록": { rich_text: {} } },
-    });
+    } as Parameters<typeof notion.databases.update>[0]);
+    dayListPropertyReady = true;
   } catch {
-    // already exists or no permission
+    dayListPropertyReady = false;
   }
-  schemaReady = true;
+  return dayListPropertyReady;
 }
 
 export async function createTemplate(data: RecurringTemplateFormData): Promise<string> {
   const dbId = getTemplateDbId();
-  await ensureDayListProperty();
+  const hasDayList = await ensureDayListProperty();
 
   const properties: Record<string, unknown> = {
     "템플릿명": { title: [{ text: { content: data.name } }] },
     "반복주기": { select: { name: data.frequency } },
     "반복일": { number: data.dayValues[0] },
-    "반복요일목록": { rich_text: [{ text: { content: data.dayValues.join(",") } }] },
     "기본프로젝트": { select: { name: data.defaultProject } },
     "기본상태": { select: { name: data.defaultStatus } },
     "업무내용": { rich_text: [{ text: { content: data.content || "" } }] },
     "활성": { checkbox: data.active },
   };
+
+  if (hasDayList) {
+    properties["반복요일목록"] = { rich_text: [{ text: { content: data.dayValues.join(",") } }] };
+  }
 
   if (data.defaultTags.length > 0) {
     properties["기본태그"] = {
@@ -142,7 +146,10 @@ export async function updateTemplate(
   }
   if (data.dayValues !== undefined) {
     properties["반복일"] = { number: data.dayValues[0] };
-    properties["반복요일목록"] = { rich_text: [{ text: { content: data.dayValues.join(",") } }] };
+    const hasDayList = await ensureDayListProperty();
+    if (hasDayList) {
+      properties["반복요일목록"] = { rich_text: [{ text: { content: data.dayValues.join(",") } }] };
+    }
   }
   if (data.defaultProject !== undefined) {
     properties["기본프로젝트"] = { select: { name: data.defaultProject } };
