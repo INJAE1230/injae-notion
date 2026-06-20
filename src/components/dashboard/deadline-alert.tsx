@@ -19,13 +19,16 @@ function getDaysUntil(dateStr: string): number {
 export function DeadlineAlert({ logs }: { logs: WorkLog[] }) {
   const [dismissed, setDismissed] = useState(false);
 
+  const isActionNeeded = (status: string) =>
+    status === "예정" || status === "다음행동";
+
   const overdue = logs.filter((log) => {
-    if (log.status === "완료" || log.status === "언젠가" || !log.date) return false;
+    if (!log.date || !isActionNeeded(log.status)) return false;
     return getDaysUntil(log.date) < 0;
   });
 
   const todayDue = logs.filter((log) => {
-    if (log.status === "완료" || log.status === "언젠가" || !log.date) return false;
+    if (!log.date || !isActionNeeded(log.status)) return false;
     return getDaysUntil(log.date) === 0;
   });
 
