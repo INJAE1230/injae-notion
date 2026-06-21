@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo } from "react";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, differenceInDays, eachDayOfInterval, parseISO } from "date-fns";
 import { FileText, Copy, Download, Loader2, Check, Hash, ClipboardCopy, FileDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -43,7 +43,6 @@ export default function ReportsPage() {
   const [copied, setCopied] = useState(false);
   const [copiedMd, setCopiedMd] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
-  const reportRef = useRef<HTMLDivElement>(null);
 
   const periodInfo = useMemo(() => {
     if (!dateFrom || !dateTo) return null;
@@ -157,51 +156,95 @@ export default function ReportsPage() {
   }
 
   async function handleDownloadPdf() {
-    if (!report || !reportRef.current) return;
+    if (!report) return;
     setPdfLoading(true);
     try {
-      const html2canvas = (await import("html2canvas")).default;
       const { jsPDF } = await import("jspdf");
 
-      const canvas = await html2canvas(reportRef.current, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-      });
-
-      const imgWidth = 190;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
       const pdf = new jsPDF("p", "mm", "a4");
-
-      let yOffset = 10;
+      const pageWidth = 190;
       const pageHeight = 277;
+      const marginLeft = 10;
+      let y = 15;
 
-      if (imgHeight <= pageHeight) {
-        pdf.addImage(canvas.toDataURL("image/png"), "PNG", 10, yOffset, imgWidth, imgHeight);
-      } else {
-        let remaining = canvas.height;
-        let srcY = 0;
-        let page = 0;
+      const fontUrl = "https://cdn.jsdelivr.net/gh/niceplugin/font-storage/NanumGothic-Regular.ttf";
+      const fontBoldUrl = "https://cdn.jsdelivr.net/gh/niceplugin/font-storage/NanumGothic-Bold.ttf";
 
-        while (remaining > 0) {
-          if (page > 0) pdf.addPage();
-          const sliceHeight = Math.min(remaining, (pageHeight * canvas.width) / imgWidth);
-          const sliceCanvas = document.createElement("canvas");
-          sliceCanvas.width = canvas.width;
-          sliceCanvas.height = sliceHeight;
-          const ctx = sliceCanvas.getContext("2d")!;
-          ctx.drawImage(canvas, 0, srcY, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
-          const sliceImgHeight = (sliceHeight * imgWidth) / canvas.width;
-          pdf.addImage(sliceCanvas.toDataURL("image/png"), "PNG", 10, 10, imgWidth, sliceImgHeight);
-          srcY += sliceHeight;
-          remaining -= sliceHeight;
-          page++;
+      const [fontData, fontBoldData] = await Promise.all([
+        fetch(fontUrl).then((r) => r.arrayBuffer()),
+        fetch(fontBoldUrl).then((r) => r.arrayBuffer()),
+      ]);
+
+      const toBase64 = (buf: ArrayBuffer) => {
+        const bytes = new Uint8Array(buf);
+        let binary = "";
+        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+        return btoa(binary);
+      };
+
+      pdf.addFileToVFS("NanumGothic.ttf", toBase64(fontData));
+      pdf.addFont("NanumGothic.ttf", "NanumGothic", "normal");
+      pdf.addFileToVFS("NanumGothicBold.ttf", toBase64(fontBoldData));
+      pdf.addFont("NanumGothicBold.ttf", "NanumGothic", "bold");
+
+      pdf.setFont("NanumGothic", "normal");
+
+      function checkPage(needed: number) {
+        if (y + needed > pageHeight) {
+          pdf.addPage();
+          y = 15;
+        }
+      }
+
+      function writeText(text: string, size: number, bold = false, indent = 0) {
+        pdf.setFontSize(size);
+        pdf.setFont("NanumGothic", bold ? "bold" : "normal");
+        const lines = pdf.splitTextToSize(text, pageWidth - indent);
+        for (const line of lines) {
+          checkPage(size * 0.5);
+          pdf.text(line, marginLeft + indent, y);
+          y += size * 0.45;
+        }
+      }
+
+      const contentLines = report.content.split("\n");
+
+      for (const line of contentLines) {
+        if (!line.trim()) {
+          y += 3;
+          continue;
+        }
+
+        if (line.startsWith("─")) {
+          checkPage(5);
+          pdf.setDrawColor(180);
+          pdf.line(marginLeft, y, marginLeft + pageWidth, y);
+          y += 5;
+          continue;
+        }
+
+        if (contentLines.indexOf(line) === 0) {
+          writeText(line, 13, true);
+          y += 2;
+        } else if (line.startsWith("■ ")) {
+          y += 2;
+          writeText(line.slice(2), 11, true);
+          y += 1;
+        } else if (line.startsWith("   ")) {
+          writeText(line.trim(), 9, false, 8);
+        } else if (/^\d+\.\s/.test(line)) {
+          writeText(line, 10, false, 4);
+        } else if (line.startsWith("  - ")) {
+          writeText(line.trim(), 9, false, 6);
+        } else {
+          writeText(line, 10);
         }
       }
 
       pdf.save(`${report.title.replace(/[\[\]]/g, "")}.pdf`);
       toast.success("PDF가 다운로드되었습니다");
-    } catch {
+    } catch (e) {
+      console.error("PDF generation error:", e);
       toast.error("PDF 생성에 실패했습니다");
     } finally {
       setPdfLoading(false);
@@ -320,7 +363,7 @@ export default function ReportsPage() {
         });
 
         return (
-          <div className="space-y-4" ref={reportRef}>
+          <div className="space-y-4">
             <Card>
               <CardHeader>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
