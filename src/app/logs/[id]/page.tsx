@@ -33,12 +33,23 @@ const INPUT_SOURCE_LABELS: Record<string, { label: string; color: string }> = {
   "슬랙": { label: "슬랙", color: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300" },
 };
 
+const BACK_LABELS: Record<string, string> = {
+  "/board": "칸반 보드",
+  "/calendar": "캘린더",
+  "/review": "주간 리뷰",
+};
+
 export default async function LogDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ from?: string }>;
 }) {
   const { id } = await params;
+  const { from } = await searchParams;
+  const backHref = from && BACK_LABELS[from] ? from : "/logs";
+  const backLabel = BACK_LABELS[from || ""] || "목록";
 
   let log;
   try {
@@ -52,10 +63,10 @@ export default async function LogDetailPage({
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <div className="flex items-center justify-between">
-        <Link href="/logs">
+        <Link href={backHref}>
           <Button variant="ghost" size="sm" className="text-muted-foreground">
             <ArrowLeft className="mr-1 h-3.5 w-3.5" />
-            목록
+            {backLabel}
           </Button>
         </Link>
         <div className="flex items-center gap-1">

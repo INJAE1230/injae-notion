@@ -190,7 +190,7 @@ export function CalendarView({ logs }: CalendarViewProps) {
                 {selectedLogs.map((log) => (
                   <Link
                     key={log.id}
-                    href={`/logs/${log.id}`}
+                    href={`/logs/${log.id}?from=/calendar`}
                     className="flex items-center gap-3 rounded-md p-2 -mx-2 transition-colors hover:bg-muted/50"
                   >
                     <div className="flex-1 min-w-0">

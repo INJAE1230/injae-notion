@@ -39,7 +39,7 @@ export function KanbanCard({ log }: KanbanCardProps) {
           const dx = Math.abs(e.clientX - pointerStart.current.x);
           const dy = Math.abs(e.clientY - pointerStart.current.y);
           if (dx < 5 && dy < 5) {
-            router.push(`/logs/${log.id}`);
+            router.push(`/logs/${log.id}?from=/board`);
           }
         }
         pointerStart.current = null;
