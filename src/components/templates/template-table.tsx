@@ -67,7 +67,7 @@ export function TemplateTable({
   const handleGenerateSingle = async (template: RecurringTemplate) => {
     setGeneratingId(template.id);
     try {
-      const mode = template.frequency === "매주" ? "이번주" : "이번달";
+      const mode = template.frequency === "매주" ? "이번주" : template.frequency === "매분기" ? "이번분기" : "이번달";
       const res = await fetch("/api/templates/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

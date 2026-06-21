@@ -1,4 +1,4 @@
-export type Frequency = "매주" | "매월";
+export type Frequency = "매주" | "매월" | "매분기";
 export type PresetCategory = "정기 보고" | "정산/회계" | "회의" | "관리 업무";
 export type Project = "청초수" | "씨푸드" | "JS코퍼" | "JKK" | "646코퍼" | "아일랜드" | "청초수(신관)" | "에이전트" | "에그롤린대전" | "개인일정";
 export type Status = "예정" | "다음행동" | "대기중" | "언젠가" | "진행 중" | "완료";

@@ -192,8 +192,18 @@ function getMonthDate(dayOfMonth: number): string {
   return formatDate(new Date(year, month, clampedDay));
 }
 
+function getQuarterDate(dayOfMonth: number): string {
+  const now = getKSTNow();
+  const month = now.getMonth();
+  const quarterStartMonth = Math.floor(month / 3) * 3;
+  const year = now.getFullYear();
+  const lastDay = new Date(year, quarterStartMonth + 1, 0).getDate();
+  const clampedDay = dayOfMonth === 0 ? lastDay : Math.min(dayOfMonth, lastDay);
+  return formatDate(new Date(year, quarterStartMonth, clampedDay));
+}
+
 export async function generateWorkLogs(
-  mode: "이번주" | "이번달",
+  mode: "이번주" | "이번달" | "이번분기",
   templateIds?: string[]
 ): Promise<{ generated: number; titles: string[]; skipped: string[] }> {
   let templates = await getAllTemplates();
@@ -206,6 +216,8 @@ export async function generateWorkLogs(
 
   if (mode === "이번주") {
     templates = templates.filter((t) => t.frequency === "매주");
+  } else if (mode === "이번분기") {
+    templates = templates.filter((t) => t.frequency === "매분기");
   } else {
     templates = templates.filter((t) => t.frequency === "매월");
   }
@@ -216,7 +228,7 @@ export async function generateWorkLogs(
   for (const tmpl of templates) {
     for (const day of tmpl.dayValues) {
       const date =
-        mode === "이번주" ? getWeekDate(day) : getMonthDate(day);
+        mode === "이번주" ? getWeekDate(day) : mode === "이번분기" ? getQuarterDate(day) : getMonthDate(day);
 
       const existing = await queryWorkLogs({
         search: tmpl.name,
@@ -252,12 +264,14 @@ export async function generateAutoWorkLogs(): Promise<{ generated: number; title
 
   const weeklyTemplates = templates.filter((t) => t.frequency === "매주");
   const monthlyTemplates = templates.filter((t) => t.frequency === "매월");
+  const quarterlyTemplates = templates.filter((t) => t.frequency === "매분기");
 
   const titles: string[] = [];
   const skipped: string[] = [];
 
   const now = getKSTNow();
   const isFirstOfMonth = now.getDate() === 1;
+  const isQuarterStart = isFirstOfMonth && [0, 3, 6, 9].includes(now.getMonth());
 
   for (const tmpl of weeklyTemplates) {
     for (const day of tmpl.dayValues) {
@@ -280,6 +294,25 @@ export async function generateAutoWorkLogs(): Promise<{ generated: number; title
     for (const tmpl of monthlyTemplates) {
       for (const day of tmpl.dayValues) {
         const date = getMonthDate(day);
+        const existing = await queryWorkLogs({ search: tmpl.name, dateFrom: date, dateTo: date });
+        if (existing.some((log) => log.title === tmpl.name)) {
+          skipped.push(tmpl.name);
+          continue;
+        }
+        await createWorkLog({
+          title: tmpl.name, date, projects: tmpl.defaultProjects,
+          status: tmpl.defaultStatus, content: tmpl.content,
+          tags: tmpl.defaultTags, hours: tmpl.defaultHours, link: null,
+        }, { inputSource: "웹" });
+        titles.push(tmpl.name);
+      }
+    }
+  }
+
+  if (isQuarterStart) {
+    for (const tmpl of quarterlyTemplates) {
+      for (const day of tmpl.dayValues) {
+        const date = getQuarterDate(day);
         const existing = await queryWorkLogs({ search: tmpl.name, dateFrom: date, dateTo: date });
         if (existing.some((log) => log.title === tmpl.name)) {
           skipped.push(tmpl.name);

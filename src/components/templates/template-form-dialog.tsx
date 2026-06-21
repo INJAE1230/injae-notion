@@ -165,6 +165,11 @@ export function TemplateFormDialog({
               <label className="text-sm font-medium">
                 {form.frequency === "매주" ? "요일 (복수 선택 가능)" : "날짜"}
               </label>
+              {form.frequency === "매분기" && (
+                <p className="text-xs text-muted-foreground">
+                  분기 시작월(1·4·7·10월)에 해당 날짜로 생성됩니다
+                </p>
+              )}
               {form.frequency === "매주" ? (
                 <div className="flex flex-wrap gap-1.5">
                   {Object.entries(DAY_OF_WEEK_LABELS).map(([val, label]) => {
@@ -312,7 +317,9 @@ export function TemplateFormDialog({
               <p className="text-xs text-muted-foreground">
                 {form.frequency === "매주"
                   ? "매주 월요일에 해당 주 업무를 자동 생성합니다"
-                  : "매월 1일에 해당 월 업무를 자동 생성합니다"}
+                  : form.frequency === "매분기"
+                    ? "분기 시작월(1·4·7·10월) 1일에 자동 생성합니다"
+                    : "매월 1일에 해당 월 업무를 자동 생성합니다"}
               </p>
             </div>
             <button

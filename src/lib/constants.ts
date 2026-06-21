@@ -51,7 +51,7 @@ export const TAG_COLORS: Record<Tag, string> = {
   "버그": "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
 };
 
-export const FREQUENCIES: Frequency[] = ["매주", "매월"];
+export const FREQUENCIES: Frequency[] = ["매주", "매월", "매분기"];
 
 export const PRESET_CATEGORIES: PresetCategory[] = ["정기 보고", "정산/회계", "회의", "관리 업무"];
 
