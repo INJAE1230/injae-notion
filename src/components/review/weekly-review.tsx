@@ -253,6 +253,7 @@ export function WeeklyReview({ allLogs: initialLogs }: WeeklyReviewProps) {
                     <TaskItem log={log} />
                   </div>
                   <div className="flex gap-1.5 shrink-0">
+                    <ActionButton label="완료" variant="default" onClick={() => handleAction(log.id, "완료", `"${log.title}" → 완료`)} loading={isLoading(log.id)} />
                     <ActionButton label="다음 주로" onClick={() => handleAction(log.id, "다음행동", `"${log.title}" → 다음행동`)} loading={isLoading(log.id)} />
                     <ActionButton label="언젠가로" onClick={() => handleAction(log.id, "언젠가", `"${log.title}" → 언젠가`)} loading={isLoading(log.id)} />
                     <ActionButton label="삭제" variant="destructive" onClick={() => handleDelete(log.id)} loading={isLoading(log.id)} />
