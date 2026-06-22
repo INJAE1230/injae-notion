@@ -243,8 +243,8 @@ export function PayrollDashboard({
                 <AreaChart data={chartData}>
                   <defs>
                     <linearGradient id="netPayGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
+                      <stop offset="5%" stopColor="var(--chart-1)" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="var(--chart-1)" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
@@ -252,8 +252,8 @@ export function PayrollDashboard({
                   <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 10000).toFixed(0)}만`} className="fill-muted-foreground" />
                   <Tooltip formatter={(v) => formatNumber(Number(v)) + "원"} />
                   <Legend />
-                  <Area type="monotone" dataKey="실수령액" stroke="hsl(var(--chart-1))" fill="url(#netPayGrad)" strokeWidth={2} />
-                  <Area type="monotone" dataKey="지급액" stroke="hsl(var(--chart-2))" fill="transparent" strokeWidth={1.5} strokeDasharray="5 5" />
+                  <Area type="monotone" dataKey="실수령액" stroke="var(--chart-1)" fill="url(#netPayGrad)" strokeWidth={2} />
+                  <Area type="monotone" dataKey="지급액" stroke="var(--chart-2)" fill="transparent" strokeWidth={1.5} strokeDasharray="5 5" />
                 </AreaChart>
               </ResponsiveContainer>
             </CardContent>
@@ -272,8 +272,8 @@ export function PayrollDashboard({
                   <YAxis yAxisId="pay" orientation="right" tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 10000).toFixed(0)}만`} className="fill-muted-foreground" />
                   <Tooltip formatter={(v, name) => name === "연장시간" ? `${v}시간` : formatNumber(Number(v)) + "원"} />
                   <Legend />
-                  <Bar yAxisId="hours" dataKey="연장시간" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} barSize={24} />
-                  <Bar yAxisId="pay" dataKey="연장수당" fill="hsl(var(--chart-4))" radius={[4, 4, 0, 0]} barSize={24} />
+                  <Bar yAxisId="hours" dataKey="연장시간" fill="var(--chart-3)" radius={[4, 4, 0, 0]} barSize={24} />
+                  <Bar yAxisId="pay" dataKey="연장수당" fill="var(--chart-4)" radius={[4, 4, 0, 0]} barSize={24} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
