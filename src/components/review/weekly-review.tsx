@@ -89,6 +89,7 @@ export function WeeklyReview({ allLogs: initialLogs }: WeeklyReviewProps) {
   const [weekOffset, setWeekOffset] = useState(0);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [processedIds, setProcessedIds] = useState<Set<string>>(new Set());
+  const [processedInfo, setProcessedInfo] = useState<Map<string, { prevStatus: Status; newLabel: string }>>(new Map());
   const [refreshing, setRefreshing] = useState(false);
 
   const { start, end } = useMemo(() => getWeekRange(weekOffset), [weekOffset]);
@@ -108,6 +109,27 @@ export function WeeklyReview({ allLogs: initialLogs }: WeeklyReviewProps) {
     }
   }
 
+  const handleUndo = async (id: string) => {
+    const info = processedInfo.get(id);
+    if (!info) return;
+    const currentStatus = logs.find((l) => l.id === id)?.status;
+    const needsServerUpdate = currentStatus !== info.prevStatus;
+    setLoadingId(id);
+    try {
+      if (needsServerUpdate) {
+        await updateStatus(id, info.prevStatus);
+        setLogs((prev) => prev.map((l) => l.id === id ? { ...l, status: info.prevStatus } : l));
+      }
+      setProcessedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+      setProcessedInfo((prev) => { const next = new Map(prev); next.delete(id); return next; });
+      toast.success("되돌렸습니다");
+    } catch {
+      toast.error("되돌리기에 실패했습니다");
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
   const handleAction = async (id: string, status: Status, message: string) => {
     const prevStatus = logs.find((l) => l.id === id)?.status;
     setLoadingId(id);
@@ -115,24 +137,14 @@ export function WeeklyReview({ allLogs: initialLogs }: WeeklyReviewProps) {
       await updateStatus(id, status);
       setLogs((prev) => prev.map((l) => l.id === id ? { ...l, status } : l));
       setProcessedIds((prev) => new Set(prev).add(id));
+      const statusLabel = status === "완료" ? "완료" : status === "다음행동" ? "다음 주로" : status === "언젠가" ? "언젠가로" : status;
+      if (prevStatus) {
+        setProcessedInfo((prev) => new Map(prev).set(id, { prevStatus, newLabel: statusLabel }));
+      }
       toast.success(message, {
         action: {
           label: "되돌리기",
-          onClick: async () => {
-            if (!prevStatus) return;
-            try {
-              await updateStatus(id, prevStatus);
-              setLogs((prev) => prev.map((l) => l.id === id ? { ...l, status: prevStatus } : l));
-              setProcessedIds((prev) => {
-                const next = new Set(prev);
-                next.delete(id);
-                return next;
-              });
-              toast.success("되돌렸습니다");
-            } catch {
-              toast.error("되돌리기에 실패했습니다");
-            }
-          },
+          onClick: () => handleUndo(id),
         },
       });
     } catch {
@@ -269,17 +281,31 @@ export function WeeklyReview({ allLogs: initialLogs }: WeeklyReviewProps) {
             <p className="text-sm text-muted-foreground py-4 text-center">미완료 업무가 없습니다</p>
           ) : (
             <div className="divide-y">
-              {review.incomplete.filter((l) => !isProcessed(l.id)).map((log) => (
+              {review.incomplete.map((log) => (
                 <div key={log.id} className="flex flex-col sm:flex-row sm:items-center gap-2 py-3">
-                  <div className="flex-1 min-w-0">
-                    <TaskItem log={log} />
-                  </div>
-                  <div className="flex gap-1.5 shrink-0">
-                    <ActionButton label="완료" variant="default" onClick={() => handleAction(log.id, "완료", `"${log.title}" → 완료`)} loading={isLoading(log.id)} />
-                    <ActionButton label="다음 주로" onClick={() => handleAction(log.id, "다음행동", `"${log.title}" → 다음행동`)} loading={isLoading(log.id)} />
-                    <ActionButton label="언젠가로" onClick={() => handleAction(log.id, "언젠가", `"${log.title}" → 언젠가`)} loading={isLoading(log.id)} />
-                    <ActionButton label="삭제" variant="destructive" onClick={() => handleDelete(log.id)} loading={isLoading(log.id)} />
-                  </div>
+                  {isProcessed(log.id) ? (
+                    <>
+                      <div className="flex-1 min-w-0 opacity-50">
+                        <p className="text-sm truncate line-through">{log.title}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs text-muted-foreground">{processedInfo.get(log.id)?.newLabel ?? "처리됨"}</span>
+                        <ActionButton label="되돌리기" onClick={() => handleUndo(log.id)} loading={isLoading(log.id)} />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex-1 min-w-0">
+                        <TaskItem log={log} />
+                      </div>
+                      <div className="flex gap-1.5 shrink-0">
+                        <ActionButton label="완료" variant="default" onClick={() => handleAction(log.id, "완료", `"${log.title}" → 완료`)} loading={isLoading(log.id)} />
+                        <ActionButton label="다음 주로" onClick={() => handleAction(log.id, "다음행동", `"${log.title}" → 다음행동`)} loading={isLoading(log.id)} />
+                        <ActionButton label="언젠가로" onClick={() => handleAction(log.id, "언젠가", `"${log.title}" → 언젠가`)} loading={isLoading(log.id)} />
+                        <ActionButton label="삭제" variant="destructive" onClick={() => handleDelete(log.id)} loading={isLoading(log.id)} />
+                      </div>
+                    </>
+                  )}
                 </div>
               ))}
               {review.incomplete.length > 0 && review.incomplete.every((l) => isProcessed(l.id)) && (
@@ -306,16 +332,30 @@ export function WeeklyReview({ allLogs: initialLogs }: WeeklyReviewProps) {
             <p className="text-sm text-muted-foreground py-4 text-center">대기중인 업무가 없습니다</p>
           ) : (
             <div className="divide-y">
-              {review.waiting.filter((l) => !isProcessed(l.id)).map((log) => (
+              {review.waiting.map((log) => (
                 <div key={log.id} className="flex flex-col sm:flex-row sm:items-center gap-2 py-3">
-                  <div className="flex-1 min-w-0">
-                    <TaskItem log={log} />
-                  </div>
-                  <div className="flex gap-1.5 shrink-0">
-                    <ActionButton label="완료" variant="default" onClick={() => handleAction(log.id, "완료", `"${log.title}" → 완료`)} loading={isLoading(log.id)} />
-                    <ActionButton label="다음행동으로" onClick={() => handleAction(log.id, "다음행동", `"${log.title}" → 다음행동`)} loading={isLoading(log.id)} />
-                    <ActionButton label="계속 대기" onClick={() => { setProcessedIds((prev) => new Set(prev).add(log.id)); toast.info(`"${log.title}" 계속 대기`); }} loading={isLoading(log.id)} />
-                  </div>
+                  {isProcessed(log.id) ? (
+                    <>
+                      <div className="flex-1 min-w-0 opacity-50">
+                        <p className="text-sm truncate line-through">{log.title}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs text-muted-foreground">{processedInfo.get(log.id)?.newLabel ?? "처리됨"}</span>
+                        <ActionButton label="되돌리기" onClick={() => handleUndo(log.id)} loading={isLoading(log.id)} />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex-1 min-w-0">
+                        <TaskItem log={log} />
+                      </div>
+                      <div className="flex gap-1.5 shrink-0">
+                        <ActionButton label="완료" variant="default" onClick={() => handleAction(log.id, "완료", `"${log.title}" → 완료`)} loading={isLoading(log.id)} />
+                        <ActionButton label="다음행동으로" onClick={() => handleAction(log.id, "다음행동", `"${log.title}" → 다음행동`)} loading={isLoading(log.id)} />
+                        <ActionButton label="계속 대기" onClick={() => { setProcessedIds((prev) => new Set(prev).add(log.id)); setProcessedInfo((prev) => new Map(prev).set(log.id, { prevStatus: log.status, newLabel: "계속 대기" })); toast.info(`"${log.title}" 계속 대기`); }} loading={isLoading(log.id)} />
+                      </div>
+                    </>
+                  )}
                 </div>
               ))}
               {review.waiting.length > 0 && review.waiting.every((l) => isProcessed(l.id)) && (
@@ -342,15 +382,29 @@ export function WeeklyReview({ allLogs: initialLogs }: WeeklyReviewProps) {
             <p className="text-sm text-muted-foreground py-4 text-center">언젠가 목록이 비어있습니다</p>
           ) : (
             <div className="divide-y">
-              {review.someday.filter((l) => !isProcessed(l.id)).map((log) => (
+              {review.someday.map((log) => (
                 <div key={log.id} className="flex flex-col sm:flex-row sm:items-center gap-2 py-3">
-                  <div className="flex-1 min-w-0">
-                    <TaskItem log={log} />
-                  </div>
-                  <div className="flex gap-1.5 shrink-0">
-                    <ActionButton label="다음행동으로" onClick={() => handleAction(log.id, "다음행동", `"${log.title}" → 다음행동`)} loading={isLoading(log.id)} />
-                    <ActionButton label="유지" onClick={() => { setProcessedIds((prev) => new Set(prev).add(log.id)); toast.info(`"${log.title}" 유지`); }} loading={isLoading(log.id)} />
-                  </div>
+                  {isProcessed(log.id) ? (
+                    <>
+                      <div className="flex-1 min-w-0 opacity-50">
+                        <p className="text-sm truncate line-through">{log.title}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs text-muted-foreground">{processedInfo.get(log.id)?.newLabel ?? "처리됨"}</span>
+                        <ActionButton label="되돌리기" onClick={() => handleUndo(log.id)} loading={isLoading(log.id)} />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex-1 min-w-0">
+                        <TaskItem log={log} />
+                      </div>
+                      <div className="flex gap-1.5 shrink-0">
+                        <ActionButton label="다음행동으로" onClick={() => handleAction(log.id, "다음행동", `"${log.title}" → 다음행동`)} loading={isLoading(log.id)} />
+                        <ActionButton label="유지" onClick={() => { setProcessedIds((prev) => new Set(prev).add(log.id)); setProcessedInfo((prev) => new Map(prev).set(log.id, { prevStatus: log.status, newLabel: "유지" })); toast.info(`"${log.title}" 유지`); }} loading={isLoading(log.id)} />
+                      </div>
+                    </>
+                  )}
                 </div>
               ))}
               {review.someday.length > 0 && review.someday.every((l) => isProcessed(l.id)) && (
