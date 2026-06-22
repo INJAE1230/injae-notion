@@ -1,14 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2 } from "lucide-react";
+import { Loader2, Info } from "lucide-react";
 import { ENTITIES } from "@/lib/constants";
 import { POSITIONS, EMPLOYMENT_STATUSES } from "@/lib/hr-types";
 import type { EmployeeFormData } from "@/lib/hr-types";
 import type { Entity } from "@/lib/constants";
+
+function calcLegalLeave(joinDate: string): number {
+  if (!joinDate) return 15;
+  const join = new Date(joinDate + "T00:00:00");
+  const now = new Date();
+  const years = (now.getTime() - join.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+  if (years < 1) return 11;
+  if (years < 3) return 15;
+  return Math.min(15 + Math.floor((years - 1) / 2), 25);
+}
+
+function getLeavGuide(joinDate: string): string {
+  if (!joinDate) return "";
+  const leave = calcLegalLeave(joinDate);
+  const join = new Date(joinDate + "T00:00:00");
+  const now = new Date();
+  const years = Math.floor((now.getTime() - join.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+  if (years < 1) return `법정 기준: 1년 미만 → ${leave}일`;
+  return `법정 기준: 근속 ${years}년 → ${leave}일`;
+}
 
 interface EmployeeFormProps {
   initial?: Partial<EmployeeFormData>;
@@ -18,16 +38,26 @@ interface EmployeeFormProps {
 }
 
 export function EmployeeForm({ initial, onSubmit, onCancel, submitLabel = "등록" }: EmployeeFormProps) {
+  const defaultJoinDate = initial?.joinDate || new Date().toISOString().slice(0, 10);
   const [form, setForm] = useState<EmployeeFormData>({
     name: initial?.name || "",
     entity: initial?.entity || null,
     department: initial?.department || "",
     position: initial?.position || null,
-    joinDate: initial?.joinDate || new Date().toISOString().slice(0, 10),
+    joinDate: defaultJoinDate,
     status: initial?.status || "재직",
-    annualLeaveTotal: initial?.annualLeaveTotal ?? 15,
+    annualLeaveTotal: initial?.annualLeaveTotal ?? calcLegalLeave(defaultJoinDate),
   });
+  const [manualLeave, setManualLeave] = useState(!!initial);
   const [loading, setLoading] = useState(false);
+
+  const handleJoinDateChange = useCallback((date: string) => {
+    setForm((prev) => ({
+      ...prev,
+      joinDate: date,
+      ...(!manualLeave ? { annualLeaveTotal: calcLegalLeave(date) } : {}),
+    }));
+  }, [manualLeave]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,20 +138,48 @@ export function EmployeeForm({ initial, onSubmit, onCancel, submitLabel = "등�
           <Input
             type="date"
             value={form.joinDate}
-            onChange={(e) => setForm({ ...form, joinDate: e.target.value })}
+            onChange={(e) => handleJoinDateChange(e.target.value)}
           />
         </div>
       </div>
 
       <div>
-        <label className="text-xs font-medium">연차발생일수</label>
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-medium">연차발생일수</label>
+          {!manualLeave && form.joinDate && (
+            <span className="text-[11px] text-teal-600 dark:text-teal-400 flex items-center gap-0.5">
+              <Info className="h-3 w-3" />
+              자동 계산됨
+            </span>
+          )}
+        </div>
         <Input
           type="number"
           min={0}
           step={0.5}
           value={form.annualLeaveTotal}
-          onChange={(e) => setForm({ ...form, annualLeaveTotal: parseFloat(e.target.value) || 0 })}
+          onChange={(e) => {
+            setManualLeave(true);
+            setForm({ ...form, annualLeaveTotal: parseFloat(e.target.value) || 0 });
+          }}
         />
+        <div className="flex items-center justify-between mt-1">
+          <span className="text-[11px] text-muted-foreground">
+            {getLeavGuide(form.joinDate)}
+          </span>
+          {manualLeave && form.joinDate && (
+            <button
+              type="button"
+              className="text-[11px] text-teal-600 dark:text-teal-400 hover:underline"
+              onClick={() => {
+                setManualLeave(false);
+                setForm({ ...form, annualLeaveTotal: calcLegalLeave(form.joinDate) });
+              }}
+            >
+              법정 기준 적용
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex justify-end gap-2 pt-2">
