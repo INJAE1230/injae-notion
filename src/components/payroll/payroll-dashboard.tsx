@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import {
   AreaChart,
   Area,
   BarChart,
   Bar,
+  LineChart,
+  Line,
   PieChart,
   Pie,
   Cell,
@@ -32,6 +34,8 @@ import {
   Calculator,
   PiggyBank,
   Timer,
+  Printer,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -146,6 +150,21 @@ function recordToFormData(r: PayrollRecord): PayrollFormData {
   };
 }
 
+function calcSimpleTax(annual: number): number {
+  const taxBrackets = [
+    { limit: 14_000_000, rate: 0.06, deduction: 0 },
+    { limit: 50_000_000, rate: 0.15, deduction: 1_260_000 },
+    { limit: 88_000_000, rate: 0.24, deduction: 5_760_000 },
+    { limit: 150_000_000, rate: 0.35, deduction: 15_440_000 },
+    { limit: 300_000_000, rate: 0.38, deduction: 19_940_000 },
+    { limit: 500_000_000, rate: 0.40, deduction: 25_940_000 },
+    { limit: 1_000_000_000, rate: 0.42, deduction: 35_940_000 },
+    { limit: Infinity, rate: 0.45, deduction: 65_940_000 },
+  ];
+  const bracket = taxBrackets.find((b) => annual <= b.limit)!;
+  return Math.max(0, Math.round(annual * bracket.rate - bracket.deduction));
+}
+
 export function PayrollDashboard({
   initialRecords,
 }: {
@@ -158,6 +177,9 @@ export function PayrollDashboard({
   const [saving, setSaving] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectedYear, setSelectedYear] = useState<string>("all");
+  const [printRecord, setPrintRecord] = useState<PayrollRecord | null>(null);
+  const [showTaxSim, setShowTaxSim] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
 
   const allYears = useMemo(() => {
     const years = new Set(records.map((r) => r.month.substring(0, 4)));
@@ -185,7 +207,10 @@ export function PayrollDashboard({
     const totalNetPay = sorted.reduce((s, r) => s + r.netPay, 0);
     const totalGrossPay = sorted.reduce((s, r) => s + r.totalPay, 0);
     const totalDeduction = sorted.reduce((s, r) => s + r.totalDeduction, 0);
-    const totalOvertimeHours = sorted.reduce((s, r) => s + r.overtimeHours, 0);
+    const totalOvertimeHours = sorted.reduce(
+      (s, r) => s + r.overtimeHours,
+      0
+    );
     const avgNetPay = Math.round(totalNetPay / sorted.length);
     return {
       totalNetPay,
@@ -218,6 +243,30 @@ export function PayrollDashboard({
     [sorted]
   );
 
+  const cumulativeChart = useMemo(() => {
+    let cumNet = 0;
+    let cumGross = 0;
+    return sorted.map((r) => {
+      cumNet += r.netPay;
+      cumGross += r.totalPay;
+      return {
+        month: r.month.replace(/^\d{4}-/, "").replace(/^0/, "") + "월",
+        누적실수령: cumNet,
+        누적지급액: cumGross,
+      };
+    });
+  }, [sorted]);
+
+  const hourlyWageChart = useMemo(
+    () =>
+      sorted.map((r) => ({
+        month: r.month.replace(/^\d{4}-/, "").replace(/^0/, "") + "월",
+        통상시급: r.hourlyWage,
+        실질시급: r.totalWorkHours > 0 ? Math.round(r.netPay / r.totalWorkHours) : 0,
+      })),
+    [sorted]
+  );
+
   const deductionPieData = useMemo(() => {
     if (!latest) return [];
     const items = [
@@ -243,6 +292,39 @@ export function PayrollDashboard({
     setEditingId(r.id);
     setFormData(recordToFormData(r));
     setShowForm(true);
+  };
+
+  const handlePrint = (r: PayrollRecord) => {
+    setPrintRecord(r);
+    setTimeout(() => {
+      const content = printRef.current;
+      if (!content) return;
+      const win = window.open("", "_blank");
+      if (!win) {
+        toast.error("팝업이 차단되었습니다. 팝업을 허용해주세요.");
+        return;
+      }
+      win.document.write(`<!DOCTYPE html><html><head><title>${r.month} 급여명세서</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Pretendard', -apple-system, sans-serif; padding: 40px; color: #1a1a1a; font-size: 13px; }
+  h1 { font-size: 20px; text-align: center; margin-bottom: 4px; }
+  .sub { text-align: center; color: #666; margin-bottom: 24px; font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+  th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; }
+  th { background: #f5f5f5; font-weight: 600; font-size: 12px; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .total-row td { font-weight: 700; background: #fafafa; }
+  .net { text-align: center; font-size: 18px; font-weight: 700; margin: 20px 0; padding: 12px; border: 2px solid #333; }
+  .info { display: flex; justify-content: space-between; color: #666; font-size: 11px; margin-top: 8px; }
+  .note { margin-top: 12px; padding: 8px; background: #f9f9f9; border-radius: 4px; font-size: 12px; color: #555; }
+  @media print { body { padding: 20px; } }
+</style></head><body>${content.innerHTML}
+<script>window.onload=function(){window.print();}<\/script>
+</body></html>`);
+      win.document.close();
+      setPrintRecord(null);
+    }, 100);
   };
 
   const handleSave = async () => {
@@ -323,9 +405,14 @@ export function PayrollDashboard({
             월별 급여명세서 기록 및 변동 분석
           </p>
         </div>
-        <Button onClick={openCreateForm} size="sm">
-          <Plus className="mr-1 h-4 w-4" /> 명세서 등록
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setShowTaxSim(true)}>
+            <Calculator className="mr-1 h-4 w-4" /> 연말정산
+          </Button>
+          <Button onClick={openCreateForm} size="sm">
+            <Plus className="mr-1 h-4 w-4" /> 명세서 등록
+          </Button>
+        </div>
       </div>
 
       {/* Year Filter */}
@@ -413,7 +500,8 @@ export function PayrollDashboard({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">
-              {selectedYear === "all" ? "전체" : `${selectedYear}년`} 요약 ({annualStats.months}개월)
+              {selectedYear === "all" ? "전체" : `${selectedYear}년`} 요약 (
+              {annualStats.months}개월)
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -456,7 +544,9 @@ export function PayrollDashboard({
                   <Calculator className="h-4 w-4 text-violet-500" />
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">월 평균 실수령</p>
+                  <p className="text-xs text-muted-foreground">
+                    월 평균 실수령
+                  </p>
                   <p className="text-sm font-bold">
                     {formatKRW(annualStats.avgNetPay)}
                   </p>
@@ -478,7 +568,7 @@ export function PayrollDashboard({
         </Card>
       )}
 
-      {/* Charts */}
+      {/* Charts Row 1: 급여추이 + 연장근무 */}
       {sorted.length >= 2 && (
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
@@ -608,6 +698,95 @@ export function PayrollDashboard({
         </div>
       )}
 
+      {/* Charts Row 2: 누적 수입 + 시급 변동 */}
+      {sorted.length >= 2 && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">
+                누적 수입 추이
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={240}>
+                <AreaChart data={cumulativeChart}>
+                  <defs>
+                    <linearGradient id="cumNetGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--chart-1)" stopOpacity={0.2} />
+                      <stop offset="95%" stopColor="var(--chart-1)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="month" tick={{ fontSize: 12 }} className="fill-muted-foreground" />
+                  <YAxis
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(v) => `${(v / 10000).toFixed(0)}만`}
+                    className="fill-muted-foreground"
+                  />
+                  <Tooltip formatter={(v) => formatNumber(Number(v)) + "원"} />
+                  <Legend />
+                  <Area
+                    type="monotone"
+                    dataKey="누적실수령"
+                    stroke="var(--chart-1)"
+                    fill="url(#cumNetGrad)"
+                    strokeWidth={2}
+                    name="누적 실수령액"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="누적지급액"
+                    stroke="var(--chart-2)"
+                    fill="transparent"
+                    strokeWidth={1.5}
+                    strokeDasharray="5 5"
+                    name="누적 지급액"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">
+                시급 변동 추이
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={240}>
+                <LineChart data={hourlyWageChart}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="month" tick={{ fontSize: 12 }} className="fill-muted-foreground" />
+                  <YAxis
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(v) => `${formatNumber(v)}원`}
+                    className="fill-muted-foreground"
+                  />
+                  <Tooltip formatter={(v) => formatNumber(Number(v)) + "원"} />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="통상시급"
+                    stroke="var(--chart-3)"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="실질시급"
+                    stroke="var(--chart-4)"
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    name="실질시급 (실수령/총시간)"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Deduction Pie Chart */}
       {deductionPieData.length > 0 && (
         <Card>
@@ -618,7 +797,11 @@ export function PayrollDashboard({
           </CardHeader>
           <CardContent>
             <div className="flex flex-col md:flex-row items-center gap-6">
-              <ResponsiveContainer width="100%" height={220} className="max-w-[280px]">
+              <ResponsiveContainer
+                width="100%"
+                height={220}
+                className="max-w-[280px]"
+              >
                 <PieChart>
                   <Pie
                     data={deductionPieData}
@@ -631,27 +814,43 @@ export function PayrollDashboard({
                     strokeWidth={0}
                   >
                     {deductionPieData.map((_, i) => (
-                      <Cell key={i} fill={DEDUCTION_COLORS[i % DEDUCTION_COLORS.length]} />
+                      <Cell
+                        key={i}
+                        fill={DEDUCTION_COLORS[i % DEDUCTION_COLORS.length]}
+                      />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(v) => formatNumber(Number(v)) + "원"} />
+                  <Tooltip
+                    formatter={(v) => formatNumber(Number(v)) + "원"}
+                  />
                 </PieChart>
               </ResponsiveContainer>
               <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm flex-1">
                 {deductionPieData.map((d, i) => {
-                  const pct = ((d.value / latest!.totalDeduction) * 100).toFixed(1);
+                  const pct = (
+                    (d.value / latest!.totalDeduction) *
+                    100
+                  ).toFixed(1);
                   return (
-                    <div key={d.name} className="flex items-center justify-between gap-2">
+                    <div
+                      key={d.name}
+                      className="flex items-center justify-between gap-2"
+                    >
                       <div className="flex items-center gap-2">
                         <span
                           className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
-                          style={{ backgroundColor: DEDUCTION_COLORS[i % DEDUCTION_COLORS.length] }}
+                          style={{
+                            backgroundColor:
+                              DEDUCTION_COLORS[i % DEDUCTION_COLORS.length],
+                          }}
                         />
                         <span className="text-muted-foreground">{d.name}</span>
                       </div>
                       <span className="font-medium tabular-nums">
                         {formatNumber(d.value)}원
-                        <span className="text-muted-foreground text-xs ml-1">({pct}%)</span>
+                        <span className="text-muted-foreground text-xs ml-1">
+                          ({pct}%)
+                        </span>
                       </span>
                     </div>
                   );
@@ -719,9 +918,7 @@ export function PayrollDashboard({
                 <div key={r.id} className="rounded-lg border">
                   <button
                     className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-accent/30 transition-colors"
-                    onClick={() =>
-                      setExpandedId(isExpanded ? null : r.id)
-                    }
+                    onClick={() => setExpandedId(isExpanded ? null : r.id)}
                   >
                     <div className="flex items-center gap-3">
                       <Badge variant="outline" className="text-xs font-mono">
@@ -773,7 +970,10 @@ export function PayrollDashboard({
                             <Row label="식대" value={r.mealAllowance} />
                           )}
                           {r.vehicleAllowance > 0 && (
-                            <Row label="차량지원비" value={r.vehicleAllowance} />
+                            <Row
+                              label="차량지원비"
+                              value={r.vehicleAllowance}
+                            />
                           )}
                           {r.otherPay > 0 && (
                             <Row label="기타수당" value={r.otherPay} />
@@ -827,6 +1027,14 @@ export function PayrollDashboard({
                           <Button
                             variant="ghost"
                             size="sm"
+                            onClick={() => handlePrint(r)}
+                            title="인쇄/PDF 내보내기"
+                          >
+                            <Printer className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => openEditForm(r)}
                           >
                             <Pencil className="h-4 w-4" />
@@ -854,6 +1062,15 @@ export function PayrollDashboard({
           )}
         </CardContent>
       </Card>
+
+      {/* Hidden print template */}
+      {printRecord && (
+        <div style={{ position: "fixed", left: -9999, top: 0 }}>
+          <div ref={printRef}>
+            <PrintPayslip record={printRecord} />
+          </div>
+        </div>
+      )}
 
       {/* Form Dialog */}
       <Dialog
@@ -889,62 +1106,16 @@ export function PayrollDashboard({
               지급 항목
             </p>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <NumField
-                label="기본급"
-                value={formData.basePay}
-                onChange={(v) => setFormData({ ...formData, basePay: v })}
-              />
-              <NumField
-                label="연장수당"
-                value={formData.overtimePay}
-                onChange={(v) => setFormData({ ...formData, overtimePay: v })}
-              />
-              <NumField
-                label="연장시간"
-                value={formData.overtimeHours}
-                onChange={(v) => setFormData({ ...formData, overtimeHours: v })}
-              />
-              <NumField
-                label="휴일수당"
-                value={formData.holidayPay}
-                onChange={(v) => setFormData({ ...formData, holidayPay: v })}
-              />
-              <NumField
-                label="야간수당"
-                value={formData.nightPay}
-                onChange={(v) => setFormData({ ...formData, nightPay: v })}
-              />
-              <NumField
-                label="연차수당"
-                value={formData.annualLeavePay}
-                onChange={(v) =>
-                  setFormData({ ...formData, annualLeavePay: v })
-                }
-              />
-              <NumField
-                label="직책수당"
-                value={formData.positionPay}
-                onChange={(v) => setFormData({ ...formData, positionPay: v })}
-              />
-              <NumField
-                label="식대"
-                value={formData.mealAllowance}
-                onChange={(v) =>
-                  setFormData({ ...formData, mealAllowance: v })
-                }
-              />
-              <NumField
-                label="차량지원비"
-                value={formData.vehicleAllowance}
-                onChange={(v) =>
-                  setFormData({ ...formData, vehicleAllowance: v })
-                }
-              />
-              <NumField
-                label="기타수당"
-                value={formData.otherPay}
-                onChange={(v) => setFormData({ ...formData, otherPay: v })}
-              />
+              <NumField label="기본급" value={formData.basePay} onChange={(v) => setFormData({ ...formData, basePay: v })} />
+              <NumField label="연장수당" value={formData.overtimePay} onChange={(v) => setFormData({ ...formData, overtimePay: v })} />
+              <NumField label="연장시간" value={formData.overtimeHours} onChange={(v) => setFormData({ ...formData, overtimeHours: v })} />
+              <NumField label="휴일수당" value={formData.holidayPay} onChange={(v) => setFormData({ ...formData, holidayPay: v })} />
+              <NumField label="야간수당" value={formData.nightPay} onChange={(v) => setFormData({ ...formData, nightPay: v })} />
+              <NumField label="연차수당" value={formData.annualLeavePay} onChange={(v) => setFormData({ ...formData, annualLeavePay: v })} />
+              <NumField label="직책수당" value={formData.positionPay} onChange={(v) => setFormData({ ...formData, positionPay: v })} />
+              <NumField label="식대" value={formData.mealAllowance} onChange={(v) => setFormData({ ...formData, mealAllowance: v })} />
+              <NumField label="차량지원비" value={formData.vehicleAllowance} onChange={(v) => setFormData({ ...formData, vehicleAllowance: v })} />
+              <NumField label="기타수당" value={formData.otherPay} onChange={(v) => setFormData({ ...formData, otherPay: v })} />
             </div>
 
             <div className="text-sm font-medium text-right">
@@ -955,56 +1126,14 @@ export function PayrollDashboard({
               공제 항목
             </p>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <NumField
-                label="근로소득세"
-                value={formData.incomeTax}
-                onChange={(v) => setFormData({ ...formData, incomeTax: v })}
-              />
-              <NumField
-                label="주민세"
-                value={formData.residentTax}
-                onChange={(v) => setFormData({ ...formData, residentTax: v })}
-              />
-              <NumField
-                label="건강보험"
-                value={formData.healthInsurance}
-                onChange={(v) =>
-                  setFormData({ ...formData, healthInsurance: v })
-                }
-              />
-              <NumField
-                label="요양보험"
-                value={formData.longTermCare}
-                onChange={(v) => setFormData({ ...formData, longTermCare: v })}
-              />
-              <NumField
-                label="국민연금"
-                value={formData.nationalPension}
-                onChange={(v) =>
-                  setFormData({ ...formData, nationalPension: v })
-                }
-              />
-              <NumField
-                label="고용보험"
-                value={formData.employmentInsurance}
-                onChange={(v) =>
-                  setFormData({ ...formData, employmentInsurance: v })
-                }
-              />
-              <NumField
-                label="연말정산"
-                value={formData.yearEndSettlement}
-                onChange={(v) =>
-                  setFormData({ ...formData, yearEndSettlement: v })
-                }
-              />
-              <NumField
-                label="기타공제"
-                value={formData.otherDeduction}
-                onChange={(v) =>
-                  setFormData({ ...formData, otherDeduction: v })
-                }
-              />
+              <NumField label="근로소득세" value={formData.incomeTax} onChange={(v) => setFormData({ ...formData, incomeTax: v })} />
+              <NumField label="주민세" value={formData.residentTax} onChange={(v) => setFormData({ ...formData, residentTax: v })} />
+              <NumField label="건강보험" value={formData.healthInsurance} onChange={(v) => setFormData({ ...formData, healthInsurance: v })} />
+              <NumField label="요양보험" value={formData.longTermCare} onChange={(v) => setFormData({ ...formData, longTermCare: v })} />
+              <NumField label="국민연금" value={formData.nationalPension} onChange={(v) => setFormData({ ...formData, nationalPension: v })} />
+              <NumField label="고용보험" value={formData.employmentInsurance} onChange={(v) => setFormData({ ...formData, employmentInsurance: v })} />
+              <NumField label="연말정산" value={formData.yearEndSettlement} onChange={(v) => setFormData({ ...formData, yearEndSettlement: v })} />
+              <NumField label="기타공제" value={formData.otherDeduction} onChange={(v) => setFormData({ ...formData, otherDeduction: v })} />
             </div>
 
             <div className="text-sm font-medium text-right">
@@ -1020,24 +1149,9 @@ export function PayrollDashboard({
               근무 정보
             </p>
             <div className="grid grid-cols-3 gap-3">
-              <NumField
-                label="총근무시간"
-                value={formData.totalWorkHours}
-                onChange={(v) =>
-                  setFormData({ ...formData, totalWorkHours: v })
-                }
-              />
-              <NumField
-                label="근무일수"
-                value={formData.workDays}
-                onChange={(v) => setFormData({ ...formData, workDays: v })}
-              />
-              <NumField
-                label="통상시급"
-                value={formData.hourlyWage}
-                onChange={(v) => setFormData({ ...formData, hourlyWage: v })}
-                step={0.01}
-              />
+              <NumField label="총근무시간" value={formData.totalWorkHours} onChange={(v) => setFormData({ ...formData, totalWorkHours: v })} />
+              <NumField label="근무일수" value={formData.workDays} onChange={(v) => setFormData({ ...formData, workDays: v })} />
+              <NumField label="통상시급" value={formData.hourlyWage} onChange={(v) => setFormData({ ...formData, hourlyWage: v })} step={0.01} />
             </div>
 
             <div>
@@ -1065,6 +1179,175 @@ export function PayrollDashboard({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Tax Simulation Dialog */}
+      <Dialog open={showTaxSim} onOpenChange={setShowTaxSim}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              연말정산 시뮬레이션
+            </DialogTitle>
+          </DialogHeader>
+          <TaxSimulator records={sorted} />
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function PrintPayslip({ record: r }: { record: PayrollRecord }) {
+  const [y, m] = r.month.split("-");
+  return (
+    <div>
+      <h1>{y}년 {parseInt(m)}월 급여명세서</h1>
+      <p className="sub">지급일: {r.payDate} | 근무일수: {r.workDays}일 | 총근무시간: {r.totalWorkHours}시간</p>
+      <table>
+        <thead>
+          <tr><th colSpan={2}>지급 항목</th><th colSpan={2}>공제 항목</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>기본급</td><td className="num">{formatNumber(r.basePay)}원</td>
+            <td>근로소득세</td><td className="num">{formatNumber(r.incomeTax)}원</td>
+          </tr>
+          <tr>
+            <td>연장수당 ({r.overtimeHours}h)</td><td className="num">{formatNumber(r.overtimePay)}원</td>
+            <td>주민세</td><td className="num">{formatNumber(r.residentTax)}원</td>
+          </tr>
+          <tr>
+            <td>휴일수당</td><td className="num">{formatNumber(r.holidayPay)}원</td>
+            <td>건강보험</td><td className="num">{formatNumber(r.healthInsurance)}원</td>
+          </tr>
+          <tr>
+            <td>야간수당</td><td className="num">{formatNumber(r.nightPay)}원</td>
+            <td>요양보험</td><td className="num">{formatNumber(r.longTermCare)}원</td>
+          </tr>
+          <tr>
+            <td>연차수당</td><td className="num">{formatNumber(r.annualLeavePay)}원</td>
+            <td>국민연금</td><td className="num">{formatNumber(r.nationalPension)}원</td>
+          </tr>
+          <tr>
+            <td>직책수당</td><td className="num">{formatNumber(r.positionPay)}원</td>
+            <td>고용보험</td><td className="num">{formatNumber(r.employmentInsurance)}원</td>
+          </tr>
+          <tr>
+            <td>식대</td><td className="num">{formatNumber(r.mealAllowance)}원</td>
+            <td>연말정산</td><td className="num">{formatNumber(r.yearEndSettlement)}원</td>
+          </tr>
+          <tr>
+            <td>차량지원비</td><td className="num">{formatNumber(r.vehicleAllowance)}원</td>
+            <td>기타공제</td><td className="num">{formatNumber(r.otherDeduction)}원</td>
+          </tr>
+          <tr>
+            <td>기타수당</td><td className="num">{formatNumber(r.otherPay)}원</td>
+            <td></td><td></td>
+          </tr>
+          <tr className="total-row">
+            <td>지급액 합계</td><td className="num">{formatNumber(r.totalPay)}원</td>
+            <td>공제 합계</td><td className="num">{formatNumber(r.totalDeduction)}원</td>
+          </tr>
+        </tbody>
+      </table>
+      <div className="net">실수령액: {formatNumber(r.netPay)}원</div>
+      {r.note && <div className="note">비고: {r.note}</div>}
+      <div className="info">
+        <span>통상시급: {formatNumber(r.hourlyWage)}원</span>
+      </div>
+    </div>
+  );
+}
+
+function TaxSimulator({ records }: { records: PayrollRecord[] }) {
+  const currentYear = new Date().getFullYear().toString();
+  const yearRecords = records.filter((r) => r.month.startsWith(currentYear));
+
+  const totalGross = yearRecords.reduce((s, r) => s + r.totalPay, 0);
+  const totalTaxPaid = yearRecords.reduce((s, r) => s + r.incomeTax + r.residentTax, 0);
+  const monthCount = yearRecords.length;
+  const projectedAnnual = monthCount > 0 ? Math.round((totalGross / monthCount) * 12) : 0;
+
+  const [personalDeduction, setPersonalDeduction] = useState(1_500_000);
+  const [dependents, setDependents] = useState(1);
+  const [insuranceDeduction, setInsuranceDeduction] = useState(0);
+  const [educationDeduction, setEducationDeduction] = useState(0);
+  const [medicalDeduction, setMedicalDeduction] = useState(0);
+  const [donationDeduction, setDonationDeduction] = useState(0);
+  const [creditCardDeduction, setCreditCardDeduction] = useState(0);
+
+  const basicDeduction = dependents * 1_500_000;
+  const totalItemDeduction = personalDeduction + insuranceDeduction + educationDeduction + medicalDeduction + donationDeduction + creditCardDeduction + basicDeduction;
+  const taxableIncome = Math.max(0, projectedAnnual - totalItemDeduction);
+  const calculatedTax = calcSimpleTax(taxableIncome);
+  const projectedTaxPaid = monthCount > 0 ? Math.round((totalTaxPaid / monthCount) * 12) : 0;
+  const settlement = projectedTaxPaid - calculatedTax;
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-lg bg-accent/50 p-3 space-y-1 text-sm">
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">{currentYear}년 현재까지 ({monthCount}개월)</span>
+          <span className="font-medium">총 급여: {formatKRW(totalGross)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">연간 추정 (12개월)</span>
+          <span className="font-medium">{formatKRW(projectedAnnual)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">기납부 소득세+주민세</span>
+          <span className="font-medium">{formatKRW(totalTaxPaid)}</span>
+        </div>
+      </div>
+
+      <Separator />
+
+      <p className="text-xs font-medium text-muted-foreground">소득공제 항목</p>
+      <div className="grid grid-cols-2 gap-3">
+        <NumField label="본인 공제" value={personalDeduction} onChange={setPersonalDeduction} />
+        <div>
+          <label className="text-xs font-medium text-muted-foreground">부양가족 수 (본인 포함)</label>
+          <Input type="number" value={dependents} onChange={(e) => setDependents(Math.max(1, Number(e.target.value) || 1))} min={1} className="mt-1" />
+        </div>
+        <NumField label="보험료 공제" value={insuranceDeduction} onChange={setInsuranceDeduction} />
+        <NumField label="교육비 공제" value={educationDeduction} onChange={setEducationDeduction} />
+        <NumField label="의료비 공제" value={medicalDeduction} onChange={setMedicalDeduction} />
+        <NumField label="기부금 공제" value={donationDeduction} onChange={setDonationDeduction} />
+        <NumField label="신용카드 공제" value={creditCardDeduction} onChange={setCreditCardDeduction} />
+      </div>
+
+      <Separator />
+
+      <div className="space-y-2 text-sm">
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">총 소득공제</span>
+          <span>{formatKRW(totalItemDeduction)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">과세표준 (추정)</span>
+          <span>{formatKRW(taxableIncome)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">산출세액 (추정)</span>
+          <span>{formatKRW(calculatedTax)}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">연간 기납부세액 (추정)</span>
+          <span>{formatKRW(projectedTaxPaid)}</span>
+        </div>
+        <Separator />
+        <div className="flex justify-between items-center">
+          <span className="font-medium">예상 정산 결과</span>
+          <span className={`text-lg font-bold ${settlement > 0 ? "text-emerald-500" : settlement < 0 ? "text-red-500" : ""}`}>
+            {settlement > 0 ? "환급 " : settlement < 0 ? "추가납부 " : ""}
+            {formatKRW(Math.abs(settlement))}
+          </span>
+        </div>
+      </div>
+
+      <p className="text-[11px] text-muted-foreground">
+        * 간이세액표 기준 추정치이며, 실제 연말정산 결과와 다를 수 있습니다.
+        세액공제(자녀, 연금 등)는 반영되지 않은 단순 시뮬레이션입니다.
+      </p>
     </div>
   );
 }
