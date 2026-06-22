@@ -156,6 +156,7 @@ export function LogFilters() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">전체 상태</SelectItem>
+              <SelectItem value="exclude-done">완료 제외</SelectItem>
               {STATUSES.map((s) => (
                 <SelectItem key={s} value={s}>
                   {s}

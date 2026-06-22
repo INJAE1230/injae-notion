@@ -83,6 +83,12 @@ function buildFilter(filters: WorkLogFilters) {
       status: { equals: filters.status },
     });
   }
+  if (filters.excludeStatus) {
+    conditions.push({
+      property: "진행상태",
+      status: { does_not_equal: filters.excludeStatus },
+    });
+  }
   if (filters.priority) {
     conditions.push({
       property: "우선순위",

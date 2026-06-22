@@ -37,6 +37,7 @@ export interface WorkLogFilters {
   dateTo?: string;
   project?: Project;
   status?: Status;
+  excludeStatus?: Status;
   tags?: Tag[];
   priority?: Priority;
   search?: string;

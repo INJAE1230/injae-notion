@@ -16,7 +16,11 @@ async function LogList({ searchParams }: { searchParams: Record<string, string> 
   if (searchParams.dateFrom) filters.dateFrom = searchParams.dateFrom;
   if (searchParams.dateTo) filters.dateTo = searchParams.dateTo;
   if (searchParams.project) filters.project = searchParams.project as WorkLogFilters["project"];
-  if (searchParams.status) filters.status = searchParams.status as WorkLogFilters["status"];
+  if (searchParams.status === "exclude-done") {
+    filters.excludeStatus = "완료";
+  } else if (searchParams.status) {
+    filters.status = searchParams.status as WorkLogFilters["status"];
+  }
   if (searchParams.tags) filters.tags = searchParams.tags.split(",") as WorkLogFilters["tags"];
   if (searchParams.priority) filters.priority = searchParams.priority as WorkLogFilters["priority"];
   if (searchParams.search) filters.search = searchParams.search;
