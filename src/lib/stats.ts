@@ -20,6 +20,7 @@ export function computeStats(logs: WorkLog[]): DashboardStats {
 
   let totalHours = 0;
   const weekMap = new Map<string, { count: number; hours: number }>();
+  const monthMap = new Map<string, { total: number; completed: number }>();
 
   for (const log of logs) {
     for (const proj of log.projects) {
@@ -39,12 +40,28 @@ export function computeStats(logs: WorkLog[]): DashboardStats {
       existing.count++;
       existing.hours += log.hours || 0;
       weekMap.set(weekKey, existing);
+
+      const monthKey = log.date.substring(0, 7);
+      const monthEntry = monthMap.get(monthKey) || { total: 0, completed: 0 };
+      monthEntry.total++;
+      if (log.status === "완료") monthEntry.completed++;
+      monthMap.set(monthKey, monthEntry);
     }
   }
 
   const weeklyVolume = Array.from(weekMap.entries())
     .map(([week, data]) => ({ week, ...data }))
     .sort((a, b) => a.week.localeCompare(b.week));
+
+  const monthlyCompletion = Array.from(monthMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-6)
+    .map(([key, data]) => ({
+      month: format(new Date(key + "-01"), "M월", { locale: ko }),
+      total: data.total,
+      completed: data.completed,
+      rate: data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0,
+    }));
 
   return {
     totalLogs: logs.length,
@@ -54,6 +71,7 @@ export function computeStats(logs: WorkLog[]): DashboardStats {
     byPriority,
     byTag,
     weeklyVolume,
+    monthlyCompletion,
   };
 }
 

@@ -64,7 +64,13 @@ export default async function LogsPage({
         </Link>
       </div>
 
-      <Suspense fallback={null}>
+      <Suspense fallback={
+        <div className="flex flex-wrap gap-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-10 w-[130px] rounded-md" />
+          ))}
+        </div>
+      }>
         <LogFilters />
       </Suspense>
 

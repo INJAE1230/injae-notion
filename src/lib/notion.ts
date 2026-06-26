@@ -1,7 +1,7 @@
 import { Client } from "@notionhq/client";
 
 const notion = new Client({ auth: process.env.NOTION_TOKEN });
-const databaseId = process.env.NOTION_DATABASE_ID!;
+const databaseId = process.env.NOTION_DATABASE_ID || (() => { throw new Error("NOTION_DATABASE_ID 환경변수가 설정되지 않았습니다."); })();
 
 let cachedDataSourceId: string | null = null;
 

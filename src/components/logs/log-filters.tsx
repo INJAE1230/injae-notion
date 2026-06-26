@@ -191,6 +191,12 @@ export function LogFilters() {
               setSearchValue(e.target.value);
               debouncedSearch(e.target.value);
             }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+                updateParam("search", searchValue || null);
+              }
+            }}
           />
 
           {hasFilters && (

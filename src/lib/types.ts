@@ -90,6 +90,7 @@ export interface DashboardStats {
   byPriority: Record<Priority, number>;
   byTag: Record<Tag, number>;
   weeklyVolume: { week: string; count: number; hours: number }[];
+  monthlyCompletion: { month: string; total: number; completed: number; rate: number }[];
 }
 
 export interface MemoParseRequest {

@@ -6,6 +6,7 @@ import { StatusChart } from "@/components/dashboard/status-chart";
 import { PriorityChart } from "@/components/dashboard/priority-chart";
 import { ProjectChart } from "@/components/dashboard/project-chart";
 import { WeeklyChart } from "@/components/dashboard/weekly-chart";
+import { CompletionRateChart } from "@/components/dashboard/completion-rate-chart";
 import { RecentLogs } from "@/components/dashboard/recent-logs";
 import { QuickMemoInput } from "@/components/memo/quick-memo-input";
 import { TodayTasks } from "@/components/dashboard/today-tasks";
@@ -81,6 +82,9 @@ export default async function DashboardPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <PriorityChart stats={stats} />
         <WeeklyChart stats={stats} />
+      </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <CompletionRateChart stats={stats} />
       </div>
 
       {/* 최근 업무 */}
