@@ -1,21 +1,11 @@
 import { notion } from "./notion";
+import { queryAllPages, type NotionPage } from "./notion-helpers";
 import type { Track, TrackFormData, TrackStatus } from "./types";
 
-const trackDbId = process.env.NOTION_TRACK_DATABASE_ID!;
-
-let cachedDsId: string | null = null;
-
-async function getDsId(): Promise<string> {
-  if (cachedDsId) return cachedDsId;
-  const db = (await notion.databases.retrieve({ database_id: trackDbId })) as Record<string, unknown>;
-  const ds = db.data_sources as { id: string }[];
-  cachedDsId = ds[0].id;
-  return cachedDsId;
-}
-
-interface NotionPage {
-  id: string;
-  properties: Record<string, unknown>;
+function getTrackDbId(): string {
+  const id = process.env.NOTION_TRACK_DATABASE_ID;
+  if (!id) throw new Error("NOTION_TRACK_DATABASE_ID 환경변수가 설정되지 않았습니다.");
+  return id;
 }
 
 function mapPageToTrack(page: NotionPage): Track {
@@ -40,25 +30,8 @@ function mapPageToTrack(page: NotionPage): Track {
 }
 
 export async function getAllTracks(): Promise<Track[]> {
-  const dsId = await getDsId();
-  const allResults: NotionPage[] = [];
-  let cursor: string | undefined;
-
-  do {
-    const query: Record<string, unknown> = {
-      data_source_id: dsId,
-      sorts: [{ property: "시작일", direction: "descending" }],
-      page_size: 100,
-    };
-    if (cursor) query.start_cursor = cursor;
-
-    const response = await (notion.dataSources as Record<string, Function>).query(query);
-    const typed = response as { results: NotionPage[]; has_more: boolean; next_cursor: string | null };
-    allResults.push(...typed.results);
-    cursor = typed.has_more && typed.next_cursor ? typed.next_cursor : undefined;
-  } while (cursor);
-
-  return allResults.map(mapPageToTrack);
+  const pages = await queryAllPages(getTrackDbId(), [{ property: "시작일", direction: "descending" }]);
+  return pages.map(mapPageToTrack);
 }
 
 export async function createTrack(data: TrackFormData): Promise<string> {
@@ -73,7 +46,7 @@ export async function createTrack(data: TrackFormData): Promise<string> {
   if (data.description) properties["설명"] = { rich_text: [{ text: { content: data.description } }] };
 
   const page = await notion.pages.create({
-    parent: { database_id: trackDbId },
+    parent: { database_id: getTrackDbId() },
     properties,
   } as Parameters<typeof notion.pages.create>[0]);
 

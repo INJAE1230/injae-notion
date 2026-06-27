@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllTemplates, createTemplate } from "@/lib/template-service";
-import type { RecurringTemplateFormData } from "@/lib/types";
+import { templateFormSchema, validateBody } from "@/lib/validations";
 
 export async function GET() {
   try {
@@ -14,8 +14,12 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const data: RecurringTemplateFormData = await request.json();
-    const id = await createTemplate(data);
+    const body = await request.json();
+    const parsed = validateBody(templateFormSchema, body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
+    }
+    const id = await createTemplate(parsed.data);
     return NextResponse.json({ id }, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "추가에 실패했습니다";

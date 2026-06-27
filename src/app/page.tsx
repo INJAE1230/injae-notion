@@ -15,7 +15,7 @@ import { DeadlineAlert } from "@/components/dashboard/deadline-alert";
 import { TemplateQuickActions } from "@/components/dashboard/template-quick-actions";
 import { templateDatabaseId } from "@/lib/notion";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 function getGreeting() {
   const now = getKSTNow();

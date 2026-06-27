@@ -1,10 +1,6 @@
-import { notion, databaseId, getDataSourceId } from "./notion";
+import { notion, getDatabaseId } from "./notion";
+import { queryAllPages, type NotionPage } from "./notion-helpers";
 import type { WorkLog, WorkLogFilters, WorkLogFormData, Tag, AchievementRating, InputSource, Priority, FileAttachment, Project } from "./types";
-
-interface NotionPage {
-  id: string;
-  properties: Record<string, unknown>;
-}
 
 const VALID_PROJECTS = new Set(["청초수", "씨푸드", "JS코퍼", "JKK", "646미터퍼세크", "아일랜드", "청초수(신관)", "에그롤린대전", "개인일정"]);
 
@@ -128,48 +124,18 @@ function buildFilter(filters: WorkLogFilters) {
 export async function queryWorkLogs(
   filters?: WorkLogFilters
 ): Promise<WorkLog[]> {
-  const dsId = await getDataSourceId();
-  const query: Record<string, unknown> = {
-    data_source_id: dsId,
-    sorts: [{ property: "날짜", direction: "descending" }],
-    page_size: 100,
-  };
-
-  if (filters) {
-    const filter = buildFilter(filters);
-    if (filter) query.filter = filter;
-  }
-
-  const response = await (notion.dataSources as Record<string, Function>).query(query);
-  const results = (response as { results: NotionPage[] }).results;
-
-  return results.map(mapPageToWorkLog);
+  const filter = filters ? buildFilter(filters) : undefined;
+  const pages = await queryAllPages(
+    getDatabaseId(),
+    [{ property: "날짜", direction: "descending" }],
+    filter as Record<string, unknown> | undefined
+  );
+  return pages.map(mapPageToWorkLog);
 }
 
 export async function getAllWorkLogs(): Promise<WorkLog[]> {
-  const dsId = await getDataSourceId();
-  const allResults: NotionPage[] = [];
-  let cursor: string | undefined;
-
-  do {
-    const query: Record<string, unknown> = {
-      data_source_id: dsId,
-      sorts: [{ property: "날짜", direction: "descending" }],
-      page_size: 100,
-    };
-    if (cursor) query.start_cursor = cursor;
-
-    const response = await (notion.dataSources as Record<string, Function>).query(query);
-    const typed = response as {
-      results: NotionPage[];
-      has_more: boolean;
-      next_cursor: string | null;
-    };
-    allResults.push(...typed.results);
-    cursor = typed.has_more && typed.next_cursor ? typed.next_cursor : undefined;
-  } while (cursor);
-
-  return allResults.map(mapPageToWorkLog);
+  const pages = await queryAllPages(getDatabaseId(), [{ property: "날짜", direction: "descending" }]);
+  return pages.map(mapPageToWorkLog);
 }
 
 export async function getWorkLog(pageId: string): Promise<WorkLog> {
@@ -232,14 +198,14 @@ export async function createWorkLog(data: WorkLogFormData, meta?: { inputSource?
 
   try {
     const page = await notion.pages.create({
-      parent: { database_id: databaseId },
+      parent: { database_id: getDatabaseId() },
       properties: { ...properties, ...metaProperties },
     } as Parameters<typeof notion.pages.create>[0]);
     return page.id;
   } catch (error) {
     if (Object.keys(metaProperties).length > 0) {
       const page = await notion.pages.create({
-        parent: { database_id: databaseId },
+        parent: { database_id: getDatabaseId() },
         properties,
       } as Parameters<typeof notion.pages.create>[0]);
       return page.id;

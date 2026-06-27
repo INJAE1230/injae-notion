@@ -1,4 +1,5 @@
 import { notion } from "./notion";
+import { queryAllPages, type NotionPage } from "./notion-helpers";
 import { ENTITIES } from "./constants";
 import type { Entity } from "./constants";
 import type {
@@ -12,31 +13,16 @@ import type {
 } from "./hr-types";
 import { parseDeductionMethod, encodeDeductionMethod, calculateRemainingLeave } from "./leave-utils";
 
-const employeeDbId = process.env.NOTION_HR_EMPLOYEE_DB_ID!;
-const attendanceDbId = process.env.NOTION_HR_ATTENDANCE_DB_ID!;
-
-let cachedEmployeeDsId: string | null = null;
-let cachedAttendanceDsId: string | null = null;
-
-async function getEmployeeDsId(): Promise<string> {
-  if (cachedEmployeeDsId) return cachedEmployeeDsId;
-  const db = await notion.databases.retrieve({ database_id: employeeDbId }) as Record<string, unknown>;
-  const ds = db.data_sources as { id: string }[];
-  cachedEmployeeDsId = ds[0].id;
-  return cachedEmployeeDsId;
+function getEmployeeDbId(): string {
+  const id = process.env.NOTION_HR_EMPLOYEE_DB_ID;
+  if (!id) throw new Error("NOTION_HR_EMPLOYEE_DB_ID 환경변수가 설정되지 않았습니다.");
+  return id;
 }
 
-async function getAttendanceDsId(): Promise<string> {
-  if (cachedAttendanceDsId) return cachedAttendanceDsId;
-  const db = await notion.databases.retrieve({ database_id: attendanceDbId }) as Record<string, unknown>;
-  const ds = db.data_sources as { id: string }[];
-  cachedAttendanceDsId = ds[0].id;
-  return cachedAttendanceDsId;
-}
-
-interface NotionPage {
-  id: string;
-  properties: Record<string, unknown>;
+function getAttendanceDbId(): string {
+  const id = process.env.NOTION_HR_ATTENDANCE_DB_ID;
+  if (!id) throw new Error("NOTION_HR_ATTENDANCE_DB_ID 환경변수가 설정되지 않았습니다.");
+  return id;
 }
 
 const VALID_ENTITIES = new Set(ENTITIES);
@@ -100,25 +86,8 @@ function mapAttendance(page: NotionPage): AttendanceRecord {
 // ── Employee CRUD ──
 
 export async function getAllEmployees(): Promise<Employee[]> {
-  const dsId = await getEmployeeDsId();
-  const allResults: NotionPage[] = [];
-  let cursor: string | undefined;
-
-  do {
-    const query: Record<string, unknown> = {
-      data_source_id: dsId,
-      sorts: [{ property: "이름", direction: "ascending" }],
-      page_size: 100,
-    };
-    if (cursor) query.start_cursor = cursor;
-
-    const response = await (notion.dataSources as Record<string, Function>).query(query);
-    const typed = response as { results: NotionPage[]; has_more: boolean; next_cursor: string | null };
-    allResults.push(...typed.results);
-    cursor = typed.has_more && typed.next_cursor ? typed.next_cursor : undefined;
-  } while (cursor);
-
-  return allResults.map(mapEmployee);
+  const pages = await queryAllPages(getEmployeeDbId(), [{ property: "이름", direction: "ascending" }]);
+  return pages.map(mapEmployee);
 }
 
 export async function createEmployee(data: EmployeeFormData): Promise<string> {
@@ -136,7 +105,7 @@ export async function createEmployee(data: EmployeeFormData): Promise<string> {
   if (data.restDays?.length) properties["정휴무요일"] = { rich_text: [{ text: { content: data.restDays.join(",") } }] };
 
   const page = await notion.pages.create({
-    parent: { database_id: employeeDbId },
+    parent: { database_id: getEmployeeDbId() },
     properties,
   } as Parameters<typeof notion.pages.create>[0]);
   return page.id;
@@ -177,25 +146,8 @@ export async function deleteEmployee(id: string): Promise<void> {
 // ── Attendance CRUD ──
 
 export async function getAllAttendance(): Promise<AttendanceRecord[]> {
-  const dsId = await getAttendanceDsId();
-  const allResults: NotionPage[] = [];
-  let cursor: string | undefined;
-
-  do {
-    const query: Record<string, unknown> = {
-      data_source_id: dsId,
-      sorts: [{ property: "날짜", direction: "descending" }],
-      page_size: 100,
-    };
-    if (cursor) query.start_cursor = cursor;
-
-    const response = await (notion.dataSources as Record<string, Function>).query(query);
-    const typed = response as { results: NotionPage[]; has_more: boolean; next_cursor: string | null };
-    allResults.push(...typed.results);
-    cursor = typed.has_more && typed.next_cursor ? typed.next_cursor : undefined;
-  } while (cursor);
-
-  return allResults.map(mapAttendance);
+  const pages = await queryAllPages(getAttendanceDbId(), [{ property: "날짜", direction: "descending" }]);
+  return pages.map(mapAttendance);
 }
 
 export async function createAttendance(data: AttendanceFormData, employeeName: string): Promise<string> {
@@ -213,7 +165,7 @@ export async function createAttendance(data: AttendanceFormData, employeeName: s
   };
 
   const page = await notion.pages.create({
-    parent: { database_id: attendanceDbId },
+    parent: { database_id: getAttendanceDbId() },
     properties,
   } as Parameters<typeof notion.pages.create>[0]);
   return page.id;
@@ -231,21 +183,28 @@ export async function deleteAttendance(id: string): Promise<void> {
 export async function createAttendanceBulk(
   records: { employeeId: string; employeeName: string; date: string; category: string }[]
 ): Promise<number> {
+  const BATCH_SIZE = 10;
   let created = 0;
-  for (const rec of records) {
-    const title = `${rec.employeeName} - ${rec.category}`;
-    const properties: Record<string, unknown> = {
-      "제목": { title: [{ text: { content: title } }] },
-      "직원": { relation: [{ id: rec.employeeId }] },
-      "날짜": { date: { start: rec.date } },
-      "구분": { select: { name: rec.category } },
-      "비고": { rich_text: [{ text: { content: "" } }] },
-    };
-    await notion.pages.create({
-      parent: { database_id: attendanceDbId },
-      properties,
-    } as Parameters<typeof notion.pages.create>[0]);
-    created++;
+
+  for (let i = 0; i < records.length; i += BATCH_SIZE) {
+    const batch = records.slice(i, i + BATCH_SIZE);
+    await Promise.all(
+      batch.map(async (rec) => {
+        const title = `${rec.employeeName} - ${rec.category}`;
+        const properties: Record<string, unknown> = {
+          "제목": { title: [{ text: { content: title } }] },
+          "직원": { relation: [{ id: rec.employeeId }] },
+          "날짜": { date: { start: rec.date } },
+          "구분": { select: { name: rec.category } },
+          "비고": { rich_text: [{ text: { content: "" } }] },
+        };
+        await notion.pages.create({
+          parent: { database_id: getAttendanceDbId() },
+          properties,
+        } as Parameters<typeof notion.pages.create>[0]);
+        created++;
+      })
+    );
   }
   return created;
 }

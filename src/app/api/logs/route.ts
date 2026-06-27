@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { queryWorkLogs, createWorkLog } from "@/lib/notion-service";
-import type { WorkLogFilters, WorkLogFormData } from "@/lib/types";
+import { workLogFormSchema, validateBody } from "@/lib/validations";
+import type { WorkLogFilters } from "@/lib/types";
 
 export async function GET(request: NextRequest) {
   try {
@@ -27,8 +28,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const data: WorkLogFormData = await request.json();
-    const id = await createWorkLog(data);
+    const body = await request.json();
+    const parsed = validateBody(workLogFormSchema, body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
+    }
+    const id = await createWorkLog(parsed.data);
     return NextResponse.json({ id }, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "추가에 실패했습니다";

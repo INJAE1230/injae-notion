@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAllPayrolls, createPayroll } from "@/lib/payroll-service";
-import type { PayrollFormData } from "@/lib/payroll-types";
+import { payrollFormSchema, validateBody } from "@/lib/validations";
 
 export async function GET() {
   try {
@@ -14,8 +14,12 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const data: PayrollFormData = await request.json();
-    const id = await createPayroll(data);
+    const body = await request.json();
+    const parsed = validateBody(payrollFormSchema, body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
+    }
+    const id = await createPayroll(parsed.data);
     return NextResponse.json({ id });
   } catch (error) {
     console.error("급여 등록 실패:", error);

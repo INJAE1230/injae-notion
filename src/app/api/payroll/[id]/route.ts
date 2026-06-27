@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { deletePayroll, updatePayroll } from "@/lib/payroll-service";
-import type { PayrollFormData } from "@/lib/payroll-types";
+import { payrollFormSchema, validateBody } from "@/lib/validations";
 
 export async function PUT(
   request: Request,
@@ -8,8 +8,12 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const data: PayrollFormData = await request.json();
-    await updatePayroll(id, data);
+    const body = await request.json();
+    const parsed = validateBody(payrollFormSchema, body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
+    }
+    await updatePayroll(id, parsed.data);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("급여 수정 실패:", error);

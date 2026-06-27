@@ -4,7 +4,7 @@ import {
   updateWorkLog,
   deleteWorkLog,
 } from "@/lib/notion-service";
-import type { WorkLogFormData } from "@/lib/types";
+import { workLogPatchSchema, validateBody } from "@/lib/validations";
 
 export async function GET(
   _request: NextRequest,
@@ -26,8 +26,12 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const data: Partial<WorkLogFormData> = await request.json();
-    await updateWorkLog(id, data);
+    const body = await request.json();
+    const parsed = validateBody(workLogPatchSchema, body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
+    }
+    await updateWorkLog(id, parsed.data);
     return NextResponse.json({ success: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "수정에 실패했습니다";

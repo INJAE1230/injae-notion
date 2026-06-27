@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAllTracks, createTrack } from "@/lib/track-service";
-import type { TrackFormData } from "@/lib/types";
+import { trackFormSchema, validateBody } from "@/lib/validations";
 
 export async function GET() {
   try {
@@ -14,8 +14,12 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const data: TrackFormData = await request.json();
-    const id = await createTrack(data);
+    const body = await request.json();
+    const parsed = validateBody(trackFormSchema, body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 });
+    }
+    const id = await createTrack(parsed.data);
     return NextResponse.json({ id });
   } catch (error) {
     console.error("트랙 생성 실패:", error);

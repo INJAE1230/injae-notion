@@ -1,4 +1,5 @@
-import { notion, templateDatabaseId, getTemplateDataSourceId } from "./notion";
+import { notion, templateDatabaseId } from "./notion";
+import { queryAllPages, type NotionPage } from "./notion-helpers";
 import { createWorkLog, queryWorkLogs } from "./notion-service";
 import type {
   RecurringTemplate,
@@ -7,11 +8,6 @@ import type {
   WorkLogFormData,
   Frequency,
 } from "./types";
-
-interface NotionPage {
-  id: string;
-  properties: Record<string, unknown>;
-}
 
 function getTemplateDbId(): string {
   if (!templateDatabaseId) {
@@ -59,28 +55,9 @@ function mapPageToTemplate(page: NotionPage): RecurringTemplate {
 }
 
 export async function getAllTemplates(): Promise<RecurringTemplate[]> {
-  const dsId = await getTemplateDataSourceId();
-  const allResults: NotionPage[] = [];
-  let cursor: string | undefined;
-
-  do {
-    const query: Record<string, unknown> = {
-      data_source_id: dsId,
-      page_size: 100,
-    };
-    if (cursor) query.start_cursor = cursor;
-
-    const response = await (notion.dataSources as Record<string, Function>).query(query);
-    const typed = response as {
-      results: NotionPage[];
-      has_more: boolean;
-      next_cursor: string | null;
-    };
-    allResults.push(...typed.results);
-    cursor = typed.has_more && typed.next_cursor ? typed.next_cursor : undefined;
-  } while (cursor);
-
-  return allResults.map(mapPageToTemplate);
+  const dbId = getTemplateDbId();
+  const pages = await queryAllPages(dbId, []);
+  return pages.map(mapPageToTemplate);
 }
 
 export async function createTemplate(data: RecurringTemplateFormData): Promise<string> {

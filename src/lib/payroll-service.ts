@@ -1,23 +1,11 @@
 import { notion } from "./notion";
+import { queryAllPages, type NotionPage } from "./notion-helpers";
 import type { PayrollRecord, PayrollFormData } from "./payroll-types";
 
-const payrollDbId = process.env.NOTION_PAYROLL_DB_ID!;
-
-let cachedDsId: string | null = null;
-
-async function getDsId(): Promise<string> {
-  if (cachedDsId) return cachedDsId;
-  const db = (await notion.databases.retrieve({
-    database_id: payrollDbId,
-  })) as Record<string, unknown>;
-  const ds = db.data_sources as { id: string }[];
-  cachedDsId = ds[0].id;
-  return cachedDsId;
-}
-
-interface NotionPage {
-  id: string;
-  properties: Record<string, unknown>;
+function getPayrollDbId(): string {
+  const id = process.env.NOTION_PAYROLL_DB_ID;
+  if (!id) throw new Error("NOTION_PAYROLL_DB_ID 환경변수가 설정되지 않았습니다.");
+  return id;
 }
 
 function mapRecord(page: NotionPage): PayrollRecord {
@@ -71,32 +59,8 @@ function mapRecord(page: NotionPage): PayrollRecord {
 }
 
 export async function getAllPayrolls(): Promise<PayrollRecord[]> {
-  const dsId = await getDsId();
-  const allResults: NotionPage[] = [];
-  let cursor: string | undefined;
-
-  do {
-    const query: Record<string, unknown> = {
-      data_source_id: dsId,
-      sorts: [{ property: "귀속월", direction: "descending" }],
-      page_size: 100,
-    };
-    if (cursor) query.start_cursor = cursor;
-
-    const response = await (
-      notion.dataSources as Record<string, Function>
-    ).query(query);
-    const typed = response as {
-      results: NotionPage[];
-      has_more: boolean;
-      next_cursor: string | null;
-    };
-    allResults.push(...typed.results);
-    cursor =
-      typed.has_more && typed.next_cursor ? typed.next_cursor : undefined;
-  } while (cursor);
-
-  return allResults.map(mapRecord);
+  const pages = await queryAllPages(getPayrollDbId(), [{ property: "귀속월", direction: "descending" }]);
+  return pages.map(mapRecord);
 }
 
 export async function createPayroll(data: PayrollFormData): Promise<string> {
@@ -156,7 +120,7 @@ export async function createPayroll(data: PayrollFormData): Promise<string> {
   };
 
   const page = await notion.pages.create({
-    parent: { database_id: payrollDbId },
+    parent: { database_id: getPayrollDbId() },
     properties,
   } as Parameters<typeof notion.pages.create>[0]);
   return page.id;
