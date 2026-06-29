@@ -123,7 +123,13 @@ export function TrackBoard({ tracks: initialTracks, allLogs }: TrackBoardProps) 
   const [kakaoEntries, setKakaoEntries] = useState<WorkLogFormData[] | null>(null);
   const [kakaoOriginalText, setKakaoOriginalText] = useState("");
 
-  const trackLogs = (track: Track) => allLogs.filter((l) => l.trackId === track.id);
+  // 업무 삭제
+  const [deletedLogIds, setDeletedLogIds] = useState<Set<string>>(new Set());
+  const [confirmDeleteLogId, setConfirmDeleteLogId] = useState<string | null>(null);
+  const [deletingLogId, setDeletingLogId] = useState<string | null>(null);
+
+  const trackLogs = (track: Track) =>
+    allLogs.filter((l) => l.trackId === track.id && !deletedLogIds.has(l.id));
 
   const trackStats = (track: Track) => {
     const logs = trackLogs(track);
@@ -217,6 +223,21 @@ export function TrackBoard({ tracks: initialTracks, allLogs }: TrackBoardProps) 
       toast.error("파싱에 실패했습니다");
     } finally {
       setKakaoLoading(false);
+    }
+  }
+
+  async function handleDeleteLog(logId: string) {
+    setDeletingLogId(logId);
+    try {
+      const res = await fetch(`/api/logs/${logId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      setDeletedLogIds((prev) => new Set([...prev, logId]));
+      toast.success("업무가 삭제되었습니다");
+    } catch {
+      toastError("삭제에 실패했습니다", () => handleDeleteLog(logId));
+    } finally {
+      setDeletingLogId(null);
+      setConfirmDeleteLogId(null);
     }
   }
 
@@ -444,22 +465,56 @@ export function TrackBoard({ tracks: initialTracks, allLogs }: TrackBoardProps) 
             ) : (
               <div className="divide-y">
                 {visible.map((log) => (
-                  <div key={log.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-accent/30 transition-colors">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm truncate">{log.title}</p>
-                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                        <span className="text-[11px] text-muted-foreground">
-                          {log.date} ({["일","월","화","수","목","금","토"][new Date(log.date + "T00:00:00").getDay()]})
-                        </span>
-                        {log.hours && <span className="text-[11px] text-muted-foreground">{log.hours}h</span>}
-                        {log.projects.map((p) => (
-                          <Badge key={p} variant="secondary" className={`text-[10px] ${PROJECT_COLORS[p]}`}>{p}</Badge>
-                        ))}
+                  <div key={log.id} className="group flex items-center gap-3 px-4 py-2.5 hover:bg-accent/30 transition-colors">
+                    {confirmDeleteLogId === log.id ? (
+                      // 삭제 확인 UI
+                      <div className="flex flex-1 items-center gap-2 flex-wrap">
+                        <p className="text-sm text-muted-foreground truncate flex-1 min-w-0">
+                          <span className="font-medium text-foreground">{log.title}</span>을(를) 삭제할까요?
+                        </p>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            onClick={() => setConfirmDeleteLogId(null)}
+                            className="text-xs px-2.5 py-1 rounded-md border hover:bg-accent transition-colors"
+                          >
+                            취소
+                          </button>
+                          <button
+                            onClick={() => handleDeleteLog(log.id)}
+                            disabled={deletingLogId === log.id}
+                            className="text-xs px-2.5 py-1 rounded-md bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center gap-1"
+                          >
+                            {deletingLogId === log.id ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                            삭제
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                    <Badge variant="secondary" className={`text-[10px] shrink-0 ${STATUS_COLORS[log.status]}`}>
-                      {log.status}
-                    </Badge>
+                    ) : (
+                      // 일반 row
+                      <>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm truncate">{log.title}</p>
+                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                            <span className="text-[11px] text-muted-foreground">
+                              {log.date} ({["일","월","화","수","목","금","토"][new Date(log.date + "T00:00:00").getDay()]})
+                            </span>
+                            {log.hours && <span className="text-[11px] text-muted-foreground">{log.hours}h</span>}
+                            {log.projects.map((p) => (
+                              <Badge key={p} variant="secondary" className={`text-[10px] ${PROJECT_COLORS[p]}`}>{p}</Badge>
+                            ))}
+                          </div>
+                        </div>
+                        <Badge variant="secondary" className={`text-[10px] shrink-0 ${STATUS_COLORS[log.status]}`}>
+                          {log.status}
+                        </Badge>
+                        <button
+                          onClick={() => setConfirmDeleteLogId(log.id)}
+                          className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/30 transition-all shrink-0"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                        </button>
+                      </>
+                    )}
                   </div>
                 ))}
                 {!showAllLogs && filtered.length > 30 && (
