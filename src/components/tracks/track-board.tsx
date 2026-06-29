@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,7 @@ import {
 } from "recharts";
 import { ENTITIES, TRACK_STATUSES, TRACK_STATUS_COLORS, PROJECT_COLORS, STATUS_COLORS } from "@/lib/constants";
 import type { Track, TrackFormData, WorkLog, TrackStatus } from "@/lib/types";
+import { LogForm } from "@/components/logs/log-form";
 
 interface TrackBoardProps {
   tracks: Track[];
@@ -94,6 +96,7 @@ function emptyForm(): TrackFormData {
 }
 
 export function TrackBoard({ tracks: initialTracks, allLogs }: TrackBoardProps) {
+  const router = useRouter();
   const [tracks, setTracks] = useState<Track[]>(initialTracks);
   const [selected, setSelected] = useState<Track | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -102,6 +105,7 @@ export function TrackBoard({ tracks: initialTracks, allLogs }: TrackBoardProps) 
   const [saving, setSaving] = useState(false);
   const [showAllLogs, setShowAllLogs] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [showLogForm, setShowLogForm] = useState(false);
 
   const trackLogs = (track: Track) => allLogs.filter((l) => l.trackId === track.id);
 
@@ -230,6 +234,9 @@ export function TrackBoard({ tracks: initialTracks, allLogs }: TrackBoardProps) 
             )}
           </div>
           <div className="ml-auto flex gap-2">
+            <Button size="sm" className="gap-1.5" onClick={() => setShowLogForm(true)}>
+              <Plus className="h-3.5 w-3.5" /> 업무 추가
+            </Button>
             <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => openEdit(selected)}>
               <Pencil className="h-3.5 w-3.5" /> 수정
             </Button>
@@ -384,6 +391,29 @@ export function TrackBoard({ tracks: initialTracks, allLogs }: TrackBoardProps) 
         </Card>
 
         {showForm && <TrackFormModal form={form} setForm={setForm} saving={saving} onSave={handleSave} onClose={() => { setShowForm(false); setEditingTrack(null); setForm(emptyForm()); }} isEdit={!!editingTrack} />}
+
+        {showLogForm && (
+          <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 backdrop-blur-sm p-4 overflow-y-auto">
+            <div className="bg-background rounded-xl shadow-2xl w-full max-w-2xl border my-8">
+              <div className="flex items-center justify-between px-5 py-4 border-b">
+                <h2 className="text-sm font-semibold">업무 추가 — {selected.title}</h2>
+                <button onClick={() => setShowLogForm(false)} className="text-muted-foreground hover:text-foreground transition-colors">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="p-5">
+                <LogForm
+                  initialTrackId={selected.id}
+                  key={selected.id}
+                  onSuccess={() => {
+                    setShowLogForm(false);
+                    router.refresh();
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

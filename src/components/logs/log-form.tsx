@@ -26,7 +26,7 @@ function getToday() {
   return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" })).toISOString().split("T")[0];
 }
 
-export function LogForm({ log, initialDate }: { log?: WorkLog; initialDate?: string }) {
+export function LogForm({ log, initialDate, initialTrackId, onSuccess }: { log?: WorkLog; initialDate?: string; initialTrackId?: string; onSuccess?: () => void }) {
   const router = useRouter();
   const isEdit = !!log;
 
@@ -43,7 +43,7 @@ export function LogForm({ log, initialDate }: { log?: WorkLog; initialDate?: str
     outcome: log?.outcome || null,
     rating: log?.rating || null,
     attachments: log?.attachments || [],
-    trackId: log?.trackId || null,
+    trackId: log?.trackId || initialTrackId || null,
   });
   const [loading, setLoading] = useState(false);
   const [touched, setTouched] = useState(false);
@@ -119,8 +119,12 @@ export function LogForm({ log, initialDate }: { log?: WorkLog; initialDate?: str
       if (!res.ok) throw new Error();
 
       toast.success(isEdit ? "업무가 수정되었습니다" : "업무가 추가되었습니다");
-      router.push("/logs");
-      router.refresh();
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        router.push("/logs");
+        router.refresh();
+      }
     } catch {
       toastError(
         isEdit ? "수정에 실패했습니다" : "추가에 실패했습니다",
