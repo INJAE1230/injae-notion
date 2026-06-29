@@ -33,6 +33,8 @@ import {
   MessageSquare,
   Loader2,
   FileText,
+  Copy,
+  ClipboardList,
 } from "lucide-react";
 import { toast } from "sonner";
 import { toastError } from "@/lib/toast-utils";
@@ -116,9 +118,17 @@ export function TrackBoard({ tracks: initialTracks, allLogs, initialTrackId }: T
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showLogForm, setShowLogForm] = useState(false);
 
-  // AI 요약
+  // AI 요약 (트랙 상세)
   const [summary, setSummary] = useState<string | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
+
+  // 전체 AI 요약 (리스트)
+  const [allSummary, setAllSummary] = useState<string | null>(null);
+  const [allSummaryLoading, setAllSummaryLoading] = useState(false);
+
+  // 진행 보고
+  const [report, setReport] = useState<string | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
 
   // 카톡 붙여넣기
   const [showKakao, setShowKakao] = useState(false);
@@ -203,6 +213,46 @@ export function TrackBoard({ tracks: initialTracks, allLogs, initialTrackId }: T
       toast.error("요약 생성에 실패했습니다");
     } finally {
       setSummaryLoading(false);
+    }
+  }
+
+  async function handleAllSummary() {
+    setAllSummary(null);
+    setAllSummaryLoading(true);
+    try {
+      const statsMap: Record<string, ReturnType<typeof trackStats>> = {};
+      for (const t of tracks) statsMap[t.id] = trackStats(t);
+      const res = await fetch("/api/tracks/all-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tracks, statsMap }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setAllSummary(data.summary);
+    } catch {
+      toast.error("전체 요약 생성에 실패했습니다");
+    } finally {
+      setAllSummaryLoading(false);
+    }
+  }
+
+  async function handleReport(track: Track, logs: ReturnType<typeof trackLogs>) {
+    setReport(null);
+    setReportLoading(true);
+    try {
+      const res = await fetch(`/api/tracks/${track.id}/report`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ track, logs }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setReport(data.report);
+    } catch {
+      toast.error("보고서 생성에 실패했습니다");
+    } finally {
+      setReportLoading(false);
     }
   }
 
@@ -294,7 +344,7 @@ export function TrackBoard({ tracks: initialTracks, allLogs, initialTrackId }: T
             </h1>
             <p className="text-sm text-muted-foreground">장기 업무 흐름을 관리하세요</p>
           </div>
-          <Button variant="outline" size="sm" className="gap-1.5 self-start" onClick={() => { setSelected(null); setStatusFilter("all"); setShowAllLogs(false); router.replace("/tracks", { scroll: false }); }}>
+          <Button variant="outline" size="sm" className="gap-1.5 self-start" onClick={() => { setSelected(null); setStatusFilter("all"); setShowAllLogs(false); setSummary(null); setReport(null); router.replace("/tracks", { scroll: false }); }}>
             <ArrowLeft className="h-4 w-4" /> 전체 트랙
           </Button>
         </div>
@@ -334,6 +384,16 @@ export function TrackBoard({ tracks: initialTracks, allLogs, initialTrackId }: T
               {summaryLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
               AI 요약
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => handleReport(selected, logs)}
+              disabled={reportLoading}
+            >
+              {reportLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ClipboardList className="h-3.5 w-3.5" />}
+              진행 보고
+            </Button>
             <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => openEdit(selected)}>
               <Pencil className="h-3.5 w-3.5" /> 수정
             </Button>
@@ -356,6 +416,30 @@ export function TrackBoard({ tracks: initialTracks, allLogs, initialTrackId }: T
               </button>
             </div>
             <p className="text-sm text-foreground/80 whitespace-pre-line leading-relaxed">{summary}</p>
+          </div>
+        )}
+
+        {report && (
+          <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 px-4 py-3 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-300">
+                <ClipboardList className="h-3.5 w-3.5" />
+                진행 보고서
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => { navigator.clipboard.writeText(report); toast.success("클립보드에 복사됐습니다"); }}
+                  className="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-accent transition-colors"
+                  title="복사"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                </button>
+                <button onClick={() => setReport(null)} className="text-muted-foreground hover:text-foreground p-1">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+            <p className="text-sm text-foreground/80 whitespace-pre-line leading-relaxed">{report}</p>
           </div>
         )}
 
@@ -656,10 +740,37 @@ export function TrackBoard({ tracks: initialTracks, allLogs, initialTrackId }: T
           </h1>
           <p className="text-sm text-muted-foreground">장기 업무 흐름을 관리하세요</p>
         </div>
-        <Button size="sm" className="gap-1.5" onClick={() => { setShowForm(true); setEditingTrack(null); setForm(emptyForm()); }}>
-          <Plus className="h-4 w-4" /> 트랙 추가
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={handleAllSummary}
+            disabled={allSummaryLoading || tracks.length === 0}
+          >
+            {allSummaryLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            전체 AI 요약
+          </Button>
+          <Button size="sm" className="gap-1.5" onClick={() => { setShowForm(true); setEditingTrack(null); setForm(emptyForm()); }}>
+            <Plus className="h-4 w-4" /> 트랙 추가
+          </Button>
+        </div>
       </div>
+
+      {allSummary && (
+        <div className="rounded-lg border border-violet-200 dark:border-violet-800 bg-violet-50/50 dark:bg-violet-950/20 px-4 py-3 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-violet-700 dark:text-violet-300">
+              <Sparkles className="h-3.5 w-3.5" />
+              전체 트랙 AI 요약
+            </div>
+            <button onClick={() => setAllSummary(null)} className="text-muted-foreground hover:text-foreground">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <p className="text-sm text-foreground/80 whitespace-pre-line leading-relaxed">{allSummary}</p>
+        </div>
+      )}
 
       {tracks.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 text-muted-foreground gap-3">

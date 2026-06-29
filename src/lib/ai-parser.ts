@@ -70,6 +70,101 @@ ${logList || "등록된 업무 없음"}
   return text;
 }
 
+export async function generateAllTracksSummary(
+  tracks: Track[],
+  statsMap: Record<string, { total: number; completed: number; inProgress: number; hours: number; rate: number }>,
+  today: string
+): Promise<string> {
+  const lines = tracks.map((t) => {
+    const s = statsMap[t.id] || { total: 0, completed: 0, inProgress: 0, hours: 0, rate: 0 };
+    let dday = "기한 없음";
+    if (t.targetDate) {
+      const diff = Math.ceil((new Date(t.targetDate + "T00:00:00").getTime() - new Date(today + "T00:00:00").getTime()) / (1000 * 60 * 60 * 24));
+      dday = diff < 0 ? `D+${Math.abs(diff)} 초과` : diff === 0 ? "D-day" : `D-${diff}`;
+    }
+    return `- ${t.title} [${t.status}] 완료율 ${s.rate}% (${s.completed}/${s.total}건) ${dday}${t.entity ? ` / ${t.entity}` : ""}`;
+  }).join("\n");
+
+  const { text } = await generateText({
+    model,
+    prompt: `오늘 날짜: ${today}
+
+[전체 트랙 현황]
+${lines || "트랙 없음"}
+
+아래 형식으로 작성하세요. 마크다운 기호(#, **, -, * 등)는 사용하지 마세요.
+
+◆ 전체 현황
+(진행 중인 트랙들의 흐름을 1~2문장으로 요약)
+
+◆ 트랙별 상태
+(각 트랙 이름: 한 줄 평가, 완료율과 D-day를 반영)
+
+◆ 이번 주 집중 포인트
+(지금 가장 신경 써야 할 트랙 또는 액션 1~2가지)`,
+  });
+
+  return text;
+}
+
+export async function generateTrackReport(
+  track: Track,
+  logs: WorkLog[],
+  today: string
+): Promise<string> {
+  const completed = logs.filter((l) => l.status === "완료");
+  const inProgress = logs.filter((l) => l.status === "진행 중" || l.status === "다음행동");
+  const pending = logs.filter((l) => l.status === "예정" || l.status === "대기중");
+  const rate = logs.length > 0 ? Math.round((completed.length / logs.length) * 100) : 0;
+  const totalHours = Math.round(logs.reduce((s, l) => s + (l.hours || 0), 0) * 10) / 10;
+
+  const completedList = completed.slice(0, 20).map((l) => `  · ${l.title}${l.content ? ` — ${l.content.slice(0, 60)}` : ""}`).join("\n");
+  const inProgressList = inProgress.map((l) => `  · ${l.title}${l.content ? ` — ${l.content.slice(0, 60)}` : ""}`).join("\n");
+  const pendingList = pending.slice(0, 10).map((l) => `  · ${l.title}`).join("\n");
+
+  const { text } = await generateText({
+    model,
+    prompt: `당신은 업무 보고서 작성 전문가입니다. 아래 정보를 바탕으로 보고·공유용 진행 보고서를 작성하세요.
+
+오늘: ${today}
+트랙: ${track.title}
+법인: ${track.entity || "미지정"}
+기간: ${track.startDate || "?"} ~ ${track.targetDate || "?"}
+상태: ${track.status} / 진행률: ${rate}% (완료 ${completed.length}건 / 전체 ${logs.length}건) / 투입 ${totalHours}h
+
+완료:
+${completedList || "없음"}
+
+진행 중:
+${inProgressList || "없음"}
+
+예정/대기:
+${pendingList || "없음"}
+
+아래 형식으로 공유 가능한 보고서를 작성하세요. 마크다운 기호는 사용하지 마세요. 간결하고 명확하게 작성하세요.
+
+[진행 보고] ${track.title}
+보고일: ${today}
+
+◆ 진행 현황
+(전체 진행률과 현재 상태를 1~2문장으로)
+
+◆ 완료 사항
+(주요 완료 업무 3~5개, 각 한 줄)
+
+◆ 진행 중
+(현재 진행 중인 주요 업무)
+
+◆ 향후 계획
+(예정된 주요 업무 또는 다음 단계)
+
+◆ 특이사항
+(리스크·이슈가 있으면 기술, 없으면 "이슈 없음"으로)`,
+  });
+
+  return text;
+}
+
 const workLogSchema = z.object({
   entries: z.array(
     z.object({
