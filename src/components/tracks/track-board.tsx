@@ -28,6 +28,9 @@ import {
   ChevronUp,
   X,
   Building2,
+  Sparkles,
+  MessageSquare,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { toastError } from "@/lib/toast-utils";
@@ -44,8 +47,9 @@ import {
   CartesianGrid,
 } from "recharts";
 import { ENTITIES, TRACK_STATUSES, TRACK_STATUS_COLORS, PROJECT_COLORS, STATUS_COLORS } from "@/lib/constants";
-import type { Track, TrackFormData, WorkLog, TrackStatus } from "@/lib/types";
+import type { Track, TrackFormData, WorkLog, TrackStatus, WorkLogFormData } from "@/lib/types";
 import { LogForm } from "@/components/logs/log-form";
+import { MemoPreview } from "@/components/memo/memo-preview";
 
 interface TrackBoardProps {
   tracks: Track[];
@@ -107,6 +111,17 @@ export function TrackBoard({ tracks: initialTracks, allLogs }: TrackBoardProps) 
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showLogForm, setShowLogForm] = useState(false);
 
+  // AI 요약
+  const [summary, setSummary] = useState<string | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+
+  // 카톡 붙여넣기
+  const [showKakao, setShowKakao] = useState(false);
+  const [kakaoText, setKakaoText] = useState("");
+  const [kakaoLoading, setKakaoLoading] = useState(false);
+  const [kakaoEntries, setKakaoEntries] = useState<WorkLogFormData[] | null>(null);
+  const [kakaoOriginalText, setKakaoOriginalText] = useState("");
+
   const trackLogs = (track: Track) => allLogs.filter((l) => l.trackId === track.id);
 
   const trackStats = (track: Track) => {
@@ -158,6 +173,49 @@ export function TrackBoard({ tracks: initialTracks, allLogs }: TrackBoardProps) 
       toast.success("트랙이 삭제되었습니다");
     } catch {
       toastError("삭제에 실패했습니다", () => handleDelete(track));
+    }
+  }
+
+  async function handleSummary(track: Track, logs: ReturnType<typeof trackLogs>) {
+    setSummary(null);
+    setSummaryLoading(true);
+    try {
+      const res = await fetch(`/api/tracks/${track.id}/summary`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ track, logs }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setSummary(data.summary);
+    } catch {
+      toast.error("요약 생성에 실패했습니다");
+    } finally {
+      setSummaryLoading(false);
+    }
+  }
+
+  async function handleKakaoParse() {
+    if (!kakaoText.trim()) { toast.error("텍스트를 붙여넣어주세요"); return; }
+    setKakaoLoading(true);
+    try {
+      const res = await fetch("/api/memo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: kakaoText }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      const withTrack = (data.entries as WorkLogFormData[]).map((e) => ({
+        ...e,
+        trackId: selected?.id ?? null,
+      }));
+      setKakaoEntries(withTrack);
+      setKakaoOriginalText(data.originalText ?? kakaoText);
+    } catch {
+      toast.error("파싱에 실패했습니다");
+    } finally {
+      setKakaoLoading(false);
     }
   }
 
@@ -233,9 +291,22 @@ export function TrackBoard({ tracks: initialTracks, allLogs }: TrackBoardProps) 
               <span className="text-sm text-muted-foreground">{selected.entity}</span>
             )}
           </div>
-          <div className="ml-auto flex gap-2">
+          <div className="ml-auto flex gap-2 flex-wrap">
             <Button size="sm" className="gap-1.5" onClick={() => setShowLogForm(true)}>
               <Plus className="h-3.5 w-3.5" /> 업무 추가
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { setShowKakao(true); setKakaoText(""); setKakaoEntries(null); }}>
+              <MessageSquare className="h-3.5 w-3.5" /> 카톡 붙여넣기
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => handleSummary(selected, logs)}
+              disabled={summaryLoading}
+            >
+              {summaryLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+              AI 요약
             </Button>
             <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => openEdit(selected)}>
               <Pencil className="h-3.5 w-3.5" /> 수정
@@ -245,6 +316,21 @@ export function TrackBoard({ tracks: initialTracks, allLogs }: TrackBoardProps) 
 
         {selected.description && (
           <p className="text-sm text-muted-foreground bg-accent/30 rounded-lg px-4 py-3">{selected.description}</p>
+        )}
+
+        {summary && (
+          <div className="rounded-lg border border-violet-200 dark:border-violet-800 bg-violet-50/50 dark:bg-violet-950/20 px-4 py-3 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-violet-700 dark:text-violet-300">
+                <Sparkles className="h-3.5 w-3.5" />
+                AI 진행 요약
+              </div>
+              <button onClick={() => setSummary(null)} className="text-muted-foreground hover:text-foreground">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <p className="text-sm text-foreground/80 whitespace-pre-line leading-relaxed">{summary}</p>
+          </div>
         )}
 
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -410,6 +496,56 @@ export function TrackBoard({ tracks: initialTracks, allLogs }: TrackBoardProps) 
                     router.refresh();
                   }}
                 />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showKakao && (
+          <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 backdrop-blur-sm p-4 overflow-y-auto">
+            <div className="bg-background rounded-xl shadow-2xl w-full max-w-2xl border my-8">
+              <div className="flex items-center justify-between px-5 py-4 border-b">
+                <div>
+                  <h2 className="text-sm font-semibold flex items-center gap-1.5">
+                    <MessageSquare className="h-4 w-4 text-yellow-500" />
+                    카톡 보고 붙여넣기 — {selected.title}
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">카카오톡 내용을 그대로 붙여넣으면 AI가 업무를 파악해 이 트랙에 자동 연결합니다</p>
+                </div>
+                <button onClick={() => setShowKakao(false)} className="text-muted-foreground hover:text-foreground transition-colors">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="p-5 space-y-4">
+                {!kakaoEntries ? (
+                  <>
+                    <textarea
+                      className="w-full min-h-[180px] rounded-lg border bg-background px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-400"
+                      placeholder={"카카오톡 대화 내용을 여기에 붙여넣으세요.\n\n예:\n청초수 오늘 발주 완료했습니다 3시간 걸렸어요\n다음주 목요일 바이어 미팅 예정\nJS코퍼 세금계산서 처리 완료"}
+                      value={kakaoText}
+                      onChange={(e) => setKakaoText(e.target.value)}
+                    />
+                    <Button
+                      className="w-full gap-2"
+                      onClick={handleKakaoParse}
+                      disabled={kakaoLoading || !kakaoText.trim()}
+                    >
+                      {kakaoLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                      {kakaoLoading ? "AI 분석 중..." : "AI로 업무 파악하기"}
+                    </Button>
+                  </>
+                ) : (
+                  <MemoPreview
+                    entries={kakaoEntries}
+                    originalText={kakaoOriginalText}
+                    onUpdate={setKakaoEntries}
+                    onReset={() => {
+                      setKakaoEntries(null);
+                      setKakaoText("");
+                      setShowKakao(false);
+                    }}
+                  />
+                )}
               </div>
             </div>
           </div>

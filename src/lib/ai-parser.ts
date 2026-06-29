@@ -1,6 +1,74 @@
-import { generateObject } from "ai";
+import { generateObject, generateText } from "ai";
 import { z } from "zod";
 import { model } from "./ai";
+import type { Track, WorkLog } from "./types";
+
+export async function generateTrackSummary(
+  track: Track,
+  logs: WorkLog[],
+  today: string
+): Promise<string> {
+  const completed = logs.filter((l) => l.status === "완료");
+  const inProgress = logs.filter((l) => l.status === "진행 중" || l.status === "다음행동");
+  const waiting = logs.filter((l) => l.status === "대기중");
+  const totalHours = Math.round(logs.reduce((s, l) => s + (l.hours || 0), 0) * 10) / 10;
+  const rate = logs.length > 0 ? Math.round((completed.length / logs.length) * 100) : 0;
+
+  let ddayText = "기한 없음";
+  if (track.targetDate) {
+    const t = new Date();
+    t.setHours(0, 0, 0, 0);
+    const target = new Date(track.targetDate + "T00:00:00");
+    const diff = Math.ceil((target.getTime() - t.getTime()) / (1000 * 60 * 60 * 24));
+    if (diff < 0) ddayText = `목표일 ${Math.abs(diff)}일 초과`;
+    else if (diff === 0) ddayText = "D-day (오늘 마감)";
+    else ddayText = `D-${diff} (${diff}일 남음)`;
+  }
+
+  const logList = logs
+    .slice(0, 50)
+    .map((l) => `- [${l.status}] ${l.title}${l.hours ? ` (${l.hours}h)` : ""}${l.content ? `: ${l.content.slice(0, 80)}` : ""}`)
+    .join("\n");
+
+  const { text } = await generateText({
+    model,
+    prompt: `당신은 업무 현황 분석 전문가입니다.
+
+오늘 날짜: ${today}
+
+[트랙 정보]
+- 트랙명: ${track.title}
+- 법인: ${track.entity || "미지정"}
+- 시작일: ${track.startDate || "미설정"}
+- 목표완료일: ${track.targetDate || "미설정"} (${ddayText})
+- 현재 상태: ${track.status}
+- 설명: ${track.description || "없음"}
+
+[업무 통계]
+- 전체: ${logs.length}건 / 완료: ${completed.length}건 / 진행 중+다음행동: ${inProgress.length}건 / 대기중: ${waiting.length}건
+- 완료율: ${rate}%
+- 총 투입 시간: ${totalHours}h
+
+[업무 목록 (최근 50건)]
+${logList || "등록된 업무 없음"}
+
+아래 4가지를 자연스러운 한국어로 작성하세요. 마크다운 기호(#, **, -, * 등)는 사용하지 마세요.
+
+◆ 현재 진행 상황
+(1~2문장으로 전체적인 흐름 요약)
+
+◆ 주요 완료 사항
+(최근 완료된 업무 중 중요한 것 최대 3건. 없으면 "아직 완료된 업무가 없습니다."로)
+
+◆ 리스크 및 우려 사항
+(완료율, 남은 일수, 대기 건수를 종합해 1~2문장. 문제 없으면 "현재 계획대로 순조롭게 진행 중입니다."로)
+
+◆ 권장 다음 액션
+(지금 당장 해야 할 가장 중요한 한 가지를 구체적으로)`,
+  });
+
+  return text;
+}
 
 const workLogSchema = z.object({
   entries: z.array(
