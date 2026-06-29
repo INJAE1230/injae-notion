@@ -1,4 +1,5 @@
 import { getAllWorkLogs } from "@/lib/notion-service";
+import { getAllTracks } from "@/lib/track-service";
 import { computeStats } from "@/lib/stats";
 import { getKSTNow, getKSTToday } from "@/lib/date-utils";
 import { SummaryCards } from "@/components/dashboard/summary-cards";
@@ -13,6 +14,7 @@ import { TodayTasks } from "@/components/dashboard/today-tasks";
 import { UpcomingDeadlines } from "@/components/dashboard/upcoming-deadlines";
 import { DeadlineAlert } from "@/components/dashboard/deadline-alert";
 import { TemplateQuickActions } from "@/components/dashboard/template-quick-actions";
+import { TrackStatusWidget } from "@/components/dashboard/track-status-widget";
 import { templateDatabaseId } from "@/lib/notion";
 
 export const revalidate = 60;
@@ -31,12 +33,13 @@ function getGreeting() {
 }
 
 export default async function DashboardPage() {
-  const logs = await getAllWorkLogs();
-  const stats = computeStats(logs);
-  const recentLogs = logs.slice(0, 5);
+  const [allLogs, tracks] = await Promise.all([getAllWorkLogs(), getAllTracks()]);
+  const ownLogs = allLogs.filter((l) => !l.trackId);
+  const stats = computeStats(ownLogs);
+  const recentLogs = ownLogs.slice(0, 5);
 
   const todayStr = getKSTToday();
-  const todayLogs = logs.filter((log) => log.date === todayStr);
+  const todayLogs = ownLogs.filter((log) => log.date === todayStr);
 
   const kstNow = getKSTNow();
   const today = kstNow.toLocaleDateString("ko-KR", {
@@ -66,12 +69,15 @@ export default async function DashboardPage() {
       {templateDatabaseId && <TemplateQuickActions />}
 
       {/* 마감 알림 */}
-      <DeadlineAlert logs={logs} />
+      <DeadlineAlert logs={ownLogs} />
+
+      {/* 트랙 현황 */}
+      <TrackStatusWidget tracks={tracks} allLogs={allLogs} today={todayStr} />
 
       {/* 오늘의 업무 + 마감 임박 */}
       <div className="grid gap-6 lg:grid-cols-2">
         <TodayTasks logs={todayLogs} />
-        <UpcomingDeadlines logs={logs} />
+        <UpcomingDeadlines logs={ownLogs} />
       </div>
 
       {/* 차트 */}
