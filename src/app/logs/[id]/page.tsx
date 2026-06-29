@@ -37,6 +37,7 @@ const BACK_LABELS: Record<string, string> = {
   "/board": "칸반 보드",
   "/calendar": "캘린더",
   "/review": "주간 리뷰",
+  "/tracks": "트랙",
 };
 
 export default async function LogDetailPage({

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -492,8 +493,10 @@ export function TrackBoard({ tracks: initialTracks, allLogs }: TrackBoardProps) 
                     ) : (
                       // 일반 row
                       <>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm truncate">{log.title}</p>
+                        <Link href={`/logs/${log.id}?from=/tracks`} className="flex-1 min-w-0 group/link">
+                          <p className="text-sm truncate group-hover/link:text-violet-600 dark:group-hover/link:text-violet-400 transition-colors">
+                            {log.title}
+                          </p>
                           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                             <span className="text-[11px] text-muted-foreground">
                               {log.date} ({["일","월","화","수","목","금","토"][new Date(log.date + "T00:00:00").getDay()]})
@@ -503,7 +506,7 @@ export function TrackBoard({ tracks: initialTracks, allLogs }: TrackBoardProps) 
                               <Badge key={p} variant="secondary" className={`text-[10px] ${PROJECT_COLORS[p]}`}>{p}</Badge>
                             ))}
                           </div>
-                        </div>
+                        </Link>
                         <Badge variant="secondary" className={`text-[10px] shrink-0 ${STATUS_COLORS[log.status]}`}>
                           {log.status}
                         </Badge>
