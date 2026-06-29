@@ -550,6 +550,11 @@ export function TrackBoard({ tracks: initialTracks, allLogs }: TrackBoardProps) 
                       </label>
                       <span className="text-xs text-muted-foreground">카카오톡 대화 내보내기(.txt) 지원</span>
                     </div>
+                    {kakaoText.length > 6000 && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400">
+                        텍스트가 길어 {Math.ceil(kakaoText.length / 6000)}개 구간으로 나눠 분석합니다
+                      </p>
+                    )}
                     <Button
                       className="w-full gap-2"
                       onClick={handleKakaoParse}
