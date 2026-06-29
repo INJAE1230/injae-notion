@@ -24,6 +24,7 @@ async function LogList({ searchParams }: { searchParams: Record<string, string> 
   if (searchParams.tags) filters.tags = searchParams.tags.split(",") as WorkLogFilters["tags"];
   if (searchParams.priority) filters.priority = searchParams.priority as WorkLogFilters["priority"];
   if (searchParams.search) filters.search = searchParams.search;
+  if (searchParams.hideTrack === "1") filters.hideTrackLinked = true;
 
   const logs = await queryWorkLogs(
     Object.keys(filters).length > 0 ? filters : undefined

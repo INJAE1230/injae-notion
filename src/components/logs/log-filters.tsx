@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { X, SlidersHorizontal, ChevronDown, ChevronUp } from "lucide-react";
+import { X, SlidersHorizontal, ChevronDown, ChevronUp, Layers } from "lucide-react";
 import { PROJECTS, STATUSES, PRIORITIES, TAGS, TAG_COLORS } from "@/lib/constants";
 import type { Tag } from "@/lib/types";
 
@@ -67,6 +67,8 @@ export function LogFilters() {
     router.push("/logs");
   }, [router]);
 
+  const hideTrack = searchParams.get("hideTrack") === "1";
+
   const hasFilters =
     searchParams.has("dateFrom") ||
     searchParams.has("dateTo") ||
@@ -74,7 +76,8 @@ export function LogFilters() {
     searchParams.has("status") ||
     searchParams.has("tags") ||
     searchParams.has("priority") ||
-    searchParams.has("search");
+    searchParams.has("search") ||
+    searchParams.has("hideTrack");
 
   const filterCount = [
     searchParams.has("dateFrom"),
@@ -84,6 +87,7 @@ export function LogFilters() {
     searchParams.has("priority"),
     searchParams.has("tags"),
     searchParams.has("search"),
+    searchParams.has("hideTrack"),
   ].filter(Boolean).length;
 
   return (
@@ -207,7 +211,7 @@ export function LogFilters() {
           )}
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 items-center">
           {TAGS.map((tag) => (
             <Badge
               key={tag}
@@ -220,6 +224,17 @@ export function LogFilters() {
               {tag}
             </Badge>
           ))}
+          <button
+            onClick={() => updateParam("hideTrack", hideTrack ? null : "1")}
+            className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-full border text-sm transition-colors select-none ${
+              hideTrack
+                ? "bg-violet-100 border-violet-300 text-violet-700 dark:bg-violet-900/40 dark:border-violet-600 dark:text-violet-300"
+                : "border-dashed text-muted-foreground hover:text-foreground hover:border-solid"
+            }`}
+          >
+            <Layers className="h-3.5 w-3.5" />
+            트랙 연결 숨기기
+          </button>
         </div>
       </div>
     </div>

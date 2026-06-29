@@ -63,6 +63,7 @@ export interface WorkLogFilters {
   tags?: Tag[];
   priority?: Priority;
   search?: string;
+  hideTrackLinked?: boolean;
 }
 
 export interface WorkLogFormData {

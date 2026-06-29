@@ -115,6 +115,12 @@ function buildFilter(filters: WorkLogFilters) {
       ],
     });
   }
+  if (filters.hideTrackLinked) {
+    conditions.push({
+      property: "트랙",
+      relation: { is_empty: true },
+    });
+  }
 
   if (conditions.length === 0) return undefined;
   if (conditions.length === 1) return conditions[0];
