@@ -29,7 +29,7 @@ import {
 import { MoreHorizontal, Pencil, Trash2, X, Layers } from "lucide-react";
 import { STATUS_COLORS, PROJECT_COLORS, TAG_COLORS, PRIORITY_COLORS, STATUSES } from "@/lib/constants";
 import { DeleteDialog } from "./delete-dialog";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import type { WorkLog, Status, Track } from "@/lib/types";
 
@@ -44,6 +44,10 @@ export function LogTable({ logs: initialLogs, tracks = [] }: { logs: WorkLog[]; 
   const router = useRouter();
   const [logs, setLogs] = useState(initialLogs);
   const [deleteTarget, setDeleteTarget] = useState<WorkLog | null>(null);
+
+  useEffect(() => {
+    setLogs(initialLogs);
+  }, [initialLogs]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState<Status | "">("");
   const [bulkLoading, setBulkLoading] = useState(false);
