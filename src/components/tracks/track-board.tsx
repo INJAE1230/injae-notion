@@ -54,6 +54,7 @@ import { ENTITIES, TRACK_STATUSES, TRACK_STATUS_COLORS, PROJECT_COLORS, STATUS_C
 import type { Track, TrackFormData, WorkLog, TrackStatus, WorkLogFormData } from "@/lib/types";
 import { LogForm } from "@/components/logs/log-form";
 import { MemoPreview } from "@/components/memo/memo-preview";
+import { TrackFiles } from "@/components/tracks/track-files";
 
 interface TrackBoardProps {
   tracks: Track[];
@@ -553,6 +554,8 @@ export function TrackBoard({ tracks: initialTracks, allLogs, initialTrackId }: T
             </Card>
           </div>
         )}
+
+        <TrackFiles trackId={selected.id} />
 
         <Card>
           <CardHeader className="pb-2">
