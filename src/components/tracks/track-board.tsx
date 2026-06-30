@@ -573,7 +573,7 @@ export function TrackBoard({ tracks: initialTracks, allLogs, initialTrackId }: T
                 <span className="text-xs text-muted-foreground">{filtered.length}건</span>
                 {logs.length > 0 && (
                   <button
-                    onClick={() => { setShowBulkDelete(true); setBulkDeletePw(""); setBulkDeleteError(""); }}
+                    onClick={() => setShowBulkDelete(true)}
                     className="text-[11px] text-muted-foreground/60 hover:text-red-400 transition-colors ml-2 underline underline-offset-2"
                     title="전체 삭제"
                   >
