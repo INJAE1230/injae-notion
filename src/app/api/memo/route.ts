@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { parseMemoText } from "@/lib/ai-parser";
+import { parseMemoText, parseMemoTextGrouped } from "@/lib/ai-parser";
 import { getKSTToday } from "@/lib/date-utils";
 
 const CHUNK_SIZE = 6000;
@@ -61,7 +61,7 @@ function splitIntoChunks(text: string): string[] {
 
 export async function POST(request: Request) {
   try {
-    const { text } = await request.json();
+    const { text, grouped } = await request.json();
 
     if (!text || typeof text !== "string" || text.trim().length === 0) {
       return NextResponse.json(
@@ -72,8 +72,13 @@ export async function POST(request: Request) {
 
     const today = getKSTToday();
     const trimmed = prefilterKakaoExport(text.trim());
-    const chunks = splitIntoChunks(trimmed);
 
+    if (grouped) {
+      const entries = await parseMemoTextGrouped(trimmed, today);
+      return NextResponse.json({ entries, originalText: trimmed, grouped: true });
+    }
+
+    const chunks = splitIntoChunks(trimmed);
     const results = await Promise.all(
       chunks.map((chunk) => parseMemoText(chunk, today))
     );

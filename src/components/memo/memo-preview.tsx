@@ -16,6 +16,7 @@ import type { WorkLogFormData } from "@/lib/types";
 interface MemoPreviewProps {
   entries: WorkLogFormData[];
   originalText: string;
+  isGrouped?: boolean;
   onReset: () => void;
   onUpdate: (entries: WorkLogFormData[]) => void;
 }
@@ -23,6 +24,7 @@ interface MemoPreviewProps {
 export function MemoPreview({
   entries,
   originalText,
+  isGrouped = false,
   onReset,
   onUpdate,
 }: MemoPreviewProps) {
@@ -90,9 +92,16 @@ export function MemoPreview({
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base">
-            AI 파싱 결과 ({entries.length}건)
-          </CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-base">
+              AI 파싱 결과 ({entries.length}건)
+            </CardTitle>
+            {isGrouped && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300 font-medium">
+                그룹 파싱
+              </span>
+            )}
+          </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={onReset}>
               <X className="h-3.5 w-3.5 mr-1" />
@@ -112,8 +121,8 @@ export function MemoPreview({
             </Button>
           </div>
         </div>
-        <p className="text-xs text-muted-foreground mt-1">
-          원본: &ldquo;{originalText}&rdquo;
+        <p className="text-xs text-muted-foreground mt-1 truncate">
+          원본: &ldquo;{originalText.length > 120 ? originalText.slice(0, 120) + "…" : originalText}&rdquo;
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -182,7 +191,9 @@ export function MemoPreview({
               )}
             </div>
             {entry.content && (
-              <p className="text-xs text-muted-foreground">{entry.content}</p>
+              <div className={`text-xs text-muted-foreground whitespace-pre-line leading-relaxed ${isGrouped ? "max-h-40 overflow-y-auto rounded border border-dashed border-border/60 bg-accent/20 px-2.5 py-2" : ""}`}>
+                {entry.content}
+              </div>
             )}
             {entry.attachments && entry.attachments.length > 0 && (
               <div className="flex items-center gap-1 text-xs text-muted-foreground">

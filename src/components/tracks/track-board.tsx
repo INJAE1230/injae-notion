@@ -136,6 +136,7 @@ export function TrackBoard({ tracks: initialTracks, allLogs, initialTrackId }: T
   const [kakaoLoading, setKakaoLoading] = useState(false);
   const [kakaoEntries, setKakaoEntries] = useState<WorkLogFormData[] | null>(null);
   const [kakaoOriginalText, setKakaoOriginalText] = useState("");
+  const [kakaoIsGrouped, setKakaoIsGrouped] = useState(false);
 
   // 업무 삭제
   const [deletedLogIds, setDeletedLogIds] = useState<Set<string>>(new Set());
@@ -258,12 +259,13 @@ export function TrackBoard({ tracks: initialTracks, allLogs, initialTrackId }: T
 
   async function handleKakaoParse() {
     if (!kakaoText.trim()) { toast.error("텍스트를 붙여넣어주세요"); return; }
+    const useGrouped = kakaoText.trim().length >= 6000;
     setKakaoLoading(true);
     try {
       const res = await fetch("/api/memo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: kakaoText }),
+        body: JSON.stringify({ text: kakaoText, grouped: useGrouped }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -273,6 +275,7 @@ export function TrackBoard({ tracks: initialTracks, allLogs, initialTrackId }: T
       }));
       setKakaoEntries(withTrack);
       setKakaoOriginalText(data.originalText ?? kakaoText);
+      setKakaoIsGrouped(data.grouped ?? false);
     } catch {
       toast.error("파싱에 실패했습니다");
     } finally {
@@ -695,9 +698,9 @@ export function TrackBoard({ tracks: initialTracks, allLogs, initialTrackId }: T
                       </label>
                       <span className="text-xs text-muted-foreground">카카오톡 대화 내보내기(.txt) 지원</span>
                     </div>
-                    {kakaoText.length > 6000 && (
-                      <p className="text-xs text-amber-600 dark:text-amber-400">
-                        텍스트가 길어 {Math.ceil(kakaoText.length / 6000)}개 구간으로 나눠 분석합니다
+                    {kakaoText.length >= 6000 && (
+                      <p className="text-xs text-violet-600 dark:text-violet-400">
+                        텍스트가 길어 그룹 파싱 모드로 전환됩니다 — 주제·법인별로 5~7개 상위 업무로 클러스터링합니다
                       </p>
                     )}
                     <Button
@@ -713,10 +716,12 @@ export function TrackBoard({ tracks: initialTracks, allLogs, initialTrackId }: T
                   <MemoPreview
                     entries={kakaoEntries}
                     originalText={kakaoOriginalText}
+                    isGrouped={kakaoIsGrouped}
                     onUpdate={setKakaoEntries}
                     onReset={() => {
                       setKakaoEntries(null);
                       setKakaoText("");
+                      setKakaoIsGrouped(false);
                       setShowKakao(false);
                     }}
                   />
