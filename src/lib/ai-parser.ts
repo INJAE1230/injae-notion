@@ -27,7 +27,7 @@ export async function generateTrackSummary(
 
   const logList = logs
     .slice(0, 50)
-    .map((l) => `- [${l.status}] ${l.title}${l.hours ? ` (${l.hours}h)` : ""}${l.content ? `: ${l.content.slice(0, 80)}` : ""}`)
+    .map((l) => `- [${l.status}] ${l.title}${l.hours ? ` (${l.hours}h)` : ""}${l.content ? `: ${l.content.slice(0, 300)}` : ""}`)
     .join("\n");
 
   const { text } = await generateText({
@@ -118,8 +118,8 @@ export async function generateTrackReport(
   const rate = logs.length > 0 ? Math.round((completed.length / logs.length) * 100) : 0;
   const totalHours = Math.round(logs.reduce((s, l) => s + (l.hours || 0), 0) * 10) / 10;
 
-  const completedList = completed.slice(0, 20).map((l) => `  · ${l.title}${l.content ? ` — ${l.content.slice(0, 60)}` : ""}`).join("\n");
-  const inProgressList = inProgress.map((l) => `  · ${l.title}${l.content ? ` — ${l.content.slice(0, 60)}` : ""}`).join("\n");
+  const completedList = completed.slice(0, 20).map((l) => `  · ${l.title}${l.content ? ` — ${l.content.slice(0, 300)}` : ""}`).join("\n");
+  const inProgressList = inProgress.map((l) => `  · ${l.title}${l.content ? ` — ${l.content.slice(0, 300)}` : ""}`).join("\n");
   const pendingList = pending.slice(0, 10).map((l) => `  · ${l.title}`).join("\n");
 
   const { text } = await generateText({
@@ -187,6 +187,8 @@ const workLogSchema = z.object({
 export async function parseMemoText(text: string, today: string) {
   const { object } = await generateObject({
     model,
+    // 구조화 추출은 일관성이 중요하므로 temperature를 낮춤
+    temperature: 0.2,
     schema: workLogSchema,
     prompt: `당신은 한국 직장인의 업무일지 파싱 전문가입니다. 사용자가 자유롭게 작성한 메모를 구조화된 업무일지 항목으로 변환합니다.
 한국어 구어체, 줄임말, 오타, 신조어, 비격식 표현, 사투리, 메신저 스타일 모두 이해해야 합니다.
@@ -579,6 +581,8 @@ export async function parseMemoTextGrouped(text: string, today: string) {
   const { object } = await generateObject({
     // 긴 대화(3만자+)를 한 번에 클러스터링+상세추출해야 하므로 고성능 모델 사용
     model: modelPro,
+    // 구조화 추출은 일관성이 중요하므로 temperature를 낮춤
+    temperature: 0.2,
     // 5~7개 그룹에 상세 항목을 모두 담으면 출력이 길어져 기본 한도로는 잘릴 수 있음
     maxOutputTokens: 16000,
     schema: workLogSchema,
