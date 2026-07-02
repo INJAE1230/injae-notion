@@ -31,7 +31,7 @@ function getUrgencyColor(days: number) {
 
 export function UpcomingDeadlines({ logs }: { logs: WorkLog[] }) {
   const upcoming = logs
-    .filter((log) => (log.status === "예정" || log.status === "다음행동") && log.date)
+    .filter((log) => log.status === "예정" && log.date)
     .map((log) => ({ ...log, daysUntil: getDaysUntil(log.date) }))
     .filter((log) => log.daysUntil <= 3)
     .sort((a, b) => a.daysUntil - b.daysUntil);

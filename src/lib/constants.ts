@@ -27,14 +27,13 @@ export const ENTITIES = [
 ] as const;
 
 export type Entity = (typeof ENTITIES)[number];
-export const STATUSES: Status[] = ["다음행동", "진행 중", "대기중", "예정", "언젠가", "완료"];
+export const STATUSES: Status[] = ["진행 중", "대기중", "예정", "언젠가", "완료"];
 export const PRIORITIES: Priority[] = ["긴급+중요", "중요", "긴급", "낮음"];
 export const TAGS: Tag[] = ["회의", "개발", "기획", "리뷰", "버그"];
 export const ACHIEVEMENT_RATINGS: AchievementRating[] = ["상", "중", "하"];
 export const INPUT_SOURCES: InputSource[] = ["웹", "카카오톡", "슬랙", "빠른메모"];
 
 export const STATUS_COLORS: Record<Status, string> = {
-  "다음행동": "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300",
   "대기중": "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
   "언젠가": "bg-slate-100 text-slate-600 dark:bg-slate-800/30 dark:text-slate-400",
   "예정": "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",

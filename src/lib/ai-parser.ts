@@ -9,7 +9,7 @@ export async function generateTrackSummary(
   today: string
 ): Promise<string> {
   const completed = logs.filter((l) => l.status === "완료");
-  const inProgress = logs.filter((l) => l.status === "진행 중" || l.status === "다음행동");
+  const inProgress = logs.filter((l) => l.status === "진행 중");
   const waiting = logs.filter((l) => l.status === "대기중");
   const totalHours = Math.round(logs.reduce((s, l) => s + (l.hours || 0), 0) * 10) / 10;
   const rate = logs.length > 0 ? Math.round((completed.length / logs.length) * 100) : 0;
@@ -45,7 +45,7 @@ export async function generateTrackSummary(
 - 설명: ${track.description || "없음"}
 
 [업무 통계]
-- 전체: ${logs.length}건 / 완료: ${completed.length}건 / 진행 중+다음행동: ${inProgress.length}건 / 대기중: ${waiting.length}건
+- 전체: ${logs.length}건 / 완료: ${completed.length}건 / 진행 중: ${inProgress.length}건 / 대기중: ${waiting.length}건
 - 완료율: ${rate}%
 - 총 투입 시간: ${totalHours}h
 
@@ -113,7 +113,7 @@ export async function generateTrackReport(
   today: string
 ): Promise<string> {
   const completed = logs.filter((l) => l.status === "완료");
-  const inProgress = logs.filter((l) => l.status === "진행 중" || l.status === "다음행동");
+  const inProgress = logs.filter((l) => l.status === "진행 중");
   const pending = logs.filter((l) => l.status === "예정" || l.status === "대기중");
   const rate = logs.length > 0 ? Math.round((completed.length / logs.length) * 100) : 0;
   const totalHours = Math.round(logs.reduce((s, l) => s + (l.hours || 0), 0) * 10) / 10;
@@ -171,7 +171,7 @@ const workLogSchema = z.object({
       title: z.string().describe("업무 제목 (간결하게)"),
       date: z.string().describe("날짜 (YYYY-MM-DD 형식)"),
       projects: z.array(z.enum(["청초수", "씨푸드", "JS코퍼", "JKK", "646미터퍼세크", "아일랜드", "청초수(신관)", "에그롤린대전", "개인일정"])).describe("관련 사업장 (다중 선택 가능)"),
-      status: z.enum(["예정", "다음행동", "대기중", "언젠가", "진행 중", "완료"]).describe("진행 상태 (GTD)"),
+      status: z.enum(["예정", "대기중", "언젠가", "진행 중", "완료"]).describe("진행 상태 (GTD)"),
       priority: z.enum(["긴급+중요", "중요", "긴급", "낮음"]).nullable().describe("우선순위 (아이젠하워)"),
       content: z.string().describe("업무 상세 내용"),
       tags: z
@@ -349,11 +349,6 @@ export async function parseMemoText(text: string, today: string) {
 - 결과형: "통과/합격/승인됨/반영됨/적용됨/배포됨/오픈됨/런칭됨"
 - 과거형 시제: 동사 어간 + ~았/었/였/ㄴ/은
 
-"다음행동" (GTD Next Action - 구체적이고 즉시 실행 가능한 업무):
-- 명시적: ~해야함/해야됨/할 거/해야지/해야겠다/할 일/넥스트/next
-- 구체적 행동 + 가까운 미래: "내일 미팅", "금요일 발표", "다음주 출장"
-- 기본값: 명확한 행동이 있는 미래 업무는 "다음행동"으로 설정
-
 "대기중" (GTD Waiting For - 다른 사람/외부 응답을 기다리는 상태):
 - 키워드: 기다리는 중/대기/대기중/응답 대기/승인 대기/컨펌 대기/결과 대기
 - 구어체: 기다려야/기다리고 있음/답변 올 때까지/회신 대기/피드백 대기
@@ -364,7 +359,9 @@ export async function parseMemoText(text: string, today: string) {
 - 구어체: 할 수도/할지도/생각 중/고민 중/검토 중/알아보는 중
 - 보류: 미룸/미뤘음/뒤로/보류
 
-"예정" (일정이 잡혀있으나 GTD 상태가 불명확한 경우):
+"예정" (아직 착수하지 않은, 앞으로 할 일 — 구체적 예정 + 일정 포함):
+- 명시적: ~해야함/해야됨/할 거/해야지/해야겠다/할 일/넥스트/next
+- 구체적 행동 + 가까운 미래: "내일 미팅", "금요일 발표", "다음주 출장"
 - 스케줄: ~하기로/잡혀있음/잡힘/스케줄/일정/예약/예약됨/잡아둠/넣어둠
 - 불확실 미래: 논의 예정
 - 요청형: ~해주세요/부탁/해줘/해줄래/해주실
@@ -377,9 +374,9 @@ export async function parseMemoText(text: string, today: string) {
 
 판단 우선순위:
 1. 명시적 키워드 (위 목록에 직접 해당)
-2. 시제 (과거형 → 완료, 미래형 + 구체적 → 다음행동, 미래형 + 불확실 → 언젠가)
+2. 시제 (과거형 → 완료, 미래형 + 구체적 → 예정, 미래형 + 불확실 → 언젠가)
 3. 문맥 (현재 진행 뉘앙스 → 진행 중, 타인 의존 → 대기중)
-4. 기본값: 오늘 날짜 → 진행 중, 미래 날짜 + 구체적 → 다음행동, 과거 날짜 → 완료
+4. 기본값: 오늘 날짜 → 진행 중, 미래 날짜 + 구체적 → 예정, 과거 날짜 → 완료
 
 ━━━━━━━━━━━━━━━━━━
 5-1. 우선순위 판단 (아이젠하워 매트릭스)
@@ -608,7 +605,7 @@ export async function parseMemoTextGrouped(text: string, today: string) {
 2. 출력 형식 (entries 배열, 최대 7개)
    - title: "법인명 + 주제" 형식 (예: "청초수 발주·재고", "JS코퍼 세금 처리", "바이어 대응")
    - date: 그룹 내 가장 최근 날짜 (YYYY-MM-DD)
-   - status: 그룹 내 가장 시급한 상태 (진행 중 > 다음행동 > 대기중 > 예정 > 언젠가 > 완료)
+   - status: 그룹 내 가장 시급한 상태 (진행 중 > 대기중 > 예정 > 언젠가 > 완료)
    - priority: 그룹 내 가장 높은 우선순위 (없으면 null)
    - hours: 그룹 내 시간 합산 (언급 없으면 null)
    - projects: 그룹에 해당하는 사업장 (다중 가능)
@@ -631,7 +628,7 @@ export async function parseMemoTextGrouped(text: string, today: string) {
      - 비용/결제 조건: ...
      - 주의사항: ...
 
-   상태값: 완료 | 진행 중 | 다음행동 | 대기중 | 예정 | 언젠가
+   상태값: 완료 | 진행 중 | 대기중 | 예정 | 언젠가
 
    [잘못된 예시] — 이렇게 뭉뚱그리면 안 됨
    • [진행중] 법인 통장 개설 및 행정 업무 처리

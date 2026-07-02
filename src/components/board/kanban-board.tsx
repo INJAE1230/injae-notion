@@ -27,7 +27,7 @@ import { Layers } from "lucide-react";
 import { KanbanCard } from "./kanban-card";
 import type { WorkLog, Status, Project } from "@/lib/types";
 
-const KANBAN_STATUSES: Status[] = ["예정", "다음행동", "진행 중", "대기중", "완료", "언젠가"];
+const KANBAN_STATUSES: Status[] = ["예정", "진행 중", "대기중", "완료", "언젠가"];
 
 interface KanbanBoardProps {
   initialLogs: WorkLog[];

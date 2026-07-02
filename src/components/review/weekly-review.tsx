@@ -138,7 +138,7 @@ export function WeeklyReview({ allLogs: initialLogs }: WeeklyReviewProps) {
       await updateStatus(id, status);
       setLogs((prev) => prev.map((l) => l.id === id ? { ...l, status } : l));
       setProcessedIds((prev) => new Set(prev).add(id));
-      const statusLabel = status === "완료" ? "완료" : status === "다음행동" ? "다음 주로" : status === "언젠가" ? "언젠가로" : status;
+      const statusLabel = status === "완료" ? "완료" : status === "예정" ? "다음 주로" : status === "언젠가" ? "언젠가로" : status;
       if (prevStatus) {
         setProcessedInfo((prev) => new Map(prev).set(id, { prevStatus, newLabel: statusLabel }));
       }
@@ -301,7 +301,7 @@ export function WeeklyReview({ allLogs: initialLogs }: WeeklyReviewProps) {
                       </div>
                       <div className="flex gap-1.5 shrink-0">
                         <ActionButton label="완료" variant="default" onClick={() => handleAction(log.id, "완료", `"${log.title}" → 완료`)} loading={isLoading(log.id)} />
-                        <ActionButton label="다음 주로" onClick={() => handleAction(log.id, "다음행동", `"${log.title}" → 다음행동`)} loading={isLoading(log.id)} />
+                        <ActionButton label="다음 주로" onClick={() => handleAction(log.id, "예정", `"${log.title}" → 예정`)} loading={isLoading(log.id)} />
                         <ActionButton label="언젠가로" onClick={() => handleAction(log.id, "언젠가", `"${log.title}" → 언젠가`)} loading={isLoading(log.id)} />
                         <ActionButton label="삭제" variant="destructive" onClick={() => handleDelete(log.id)} loading={isLoading(log.id)} />
                       </div>
@@ -352,7 +352,7 @@ export function WeeklyReview({ allLogs: initialLogs }: WeeklyReviewProps) {
                       </div>
                       <div className="flex gap-1.5 shrink-0">
                         <ActionButton label="완료" variant="default" onClick={() => handleAction(log.id, "완료", `"${log.title}" → 완료`)} loading={isLoading(log.id)} />
-                        <ActionButton label="다음행동으로" onClick={() => handleAction(log.id, "다음행동", `"${log.title}" → 다음행동`)} loading={isLoading(log.id)} />
+                        <ActionButton label="예정으로" onClick={() => handleAction(log.id, "예정", `"${log.title}" → 예정`)} loading={isLoading(log.id)} />
                         <ActionButton label="계속 대기" onClick={() => { setProcessedIds((prev) => new Set(prev).add(log.id)); setProcessedInfo((prev) => new Map(prev).set(log.id, { prevStatus: log.status, newLabel: "계속 대기" })); toast.info(`"${log.title}" 계속 대기`); }} loading={isLoading(log.id)} />
                       </div>
                     </>
@@ -401,7 +401,7 @@ export function WeeklyReview({ allLogs: initialLogs }: WeeklyReviewProps) {
                         <TaskItem log={log} />
                       </div>
                       <div className="flex gap-1.5 shrink-0">
-                        <ActionButton label="다음행동으로" onClick={() => handleAction(log.id, "다음행동", `"${log.title}" → 다음행동`)} loading={isLoading(log.id)} />
+                        <ActionButton label="예정으로" onClick={() => handleAction(log.id, "예정", `"${log.title}" → 예정`)} loading={isLoading(log.id)} />
                         <ActionButton label="유지" onClick={() => { setProcessedIds((prev) => new Set(prev).add(log.id)); setProcessedInfo((prev) => new Map(prev).set(log.id, { prevStatus: log.status, newLabel: "유지" })); toast.info(`"${log.title}" 유지`); }} loading={isLoading(log.id)} />
                       </div>
                     </>
@@ -421,12 +421,12 @@ export function WeeklyReview({ allLogs: initialLogs }: WeeklyReviewProps) {
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <ArrowRight className="h-4 w-4 text-indigo-500" />
-            다음 주 계획 (현재 다음행동 목록)
+            다음 주 계획 (현재 예정 목록)
           </CardTitle>
         </CardHeader>
         <CardContent>
           {review.nextActions.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4 text-center">다음행동 목록이 비어있습니다</p>
+            <p className="text-sm text-muted-foreground py-4 text-center">예정 목록이 비어있습니다</p>
           ) : (
             <div className="divide-y">
               {review.nextActions.map((log) => (

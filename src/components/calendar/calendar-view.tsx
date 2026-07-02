@@ -151,7 +151,6 @@ export function CalendarView({ logs }: CalendarViewProps) {
                           className={`h-1.5 w-1.5 rounded-full ${
                             log.status === "완료" ? "bg-green-500" :
                             log.status === "진행 중" ? "bg-blue-500" :
-                            log.status === "다음행동" ? "bg-indigo-500" :
                             log.status === "대기중" ? "bg-orange-500" :
                             log.status === "언젠가" ? "bg-slate-400" : "bg-gray-400"
                           }`}

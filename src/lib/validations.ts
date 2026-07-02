@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const projects = ["청초수", "씨푸드", "JS코퍼", "JKK", "646미터퍼세크", "아일랜드", "청초수(신관)", "에그롤린대전", "개인일정"] as const;
-const statuses = ["예정", "다음행동", "대기중", "언젠가", "진행 중", "완료"] as const;
+const statuses = ["예정", "대기중", "언젠가", "진행 중", "완료"] as const;
 const priorities = ["긴급+중요", "중요", "긴급", "낮음"] as const;
 const tags = ["회의", "개발", "기획", "리뷰", "버그"] as const;
 const ratings = ["상", "중", "하"] as const;

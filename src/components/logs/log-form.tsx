@@ -34,7 +34,7 @@ export function LogForm({ log, initialDate, initialTrackId, onSuccess }: { log?:
     title: log?.title || "",
     date: log?.date || initialDate || getToday(),
     projects: log?.projects || ["청초수"],
-    status: log?.status || "다음행동",
+    status: log?.status || "예정",
     priority: log?.priority || null,
     content: log?.content || "",
     tags: log?.tags || [],

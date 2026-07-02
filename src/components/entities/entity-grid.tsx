@@ -77,7 +77,6 @@ const ENTITY_SHORT: Record<string, string> = {
 };
 
 const STATUS_CHART_COLORS: Record<Status, string> = {
-  "다음행동": "#818cf8",
   "진행 중": "#6366f1",
   "대기중": "#fb923c",
   "예정": "#eab308",
@@ -135,7 +134,7 @@ export function EntityGrid({ entityStats: rawStats, allLogs }: EntityGridProps) 
     return rawStats.map((es) => {
       const logs = filteredLogs.filter((l) => l.projects.some((p) => es.projects.includes(p)));
       const completed = logs.filter((l) => l.status === "완료").length;
-      const inProgress = logs.filter((l) => l.status === "진행 중" || l.status === "다음행동").length;
+      const inProgress = logs.filter((l) => l.status === "진행 중").length;
       const thisMonthLogs = logs.filter((l) => l.date.startsWith(thisMonth)).length;
       const totalHours = logs.reduce((s, l) => s + (l.hours || 0), 0);
       return {
@@ -235,7 +234,7 @@ export function EntityGrid({ entityStats: rawStats, allLogs }: EntityGridProps) 
     const displayLogs = drilldownStatus === "all" ? entityLogs : entityLogs.filter((l) => l.status === drilldownStatus);
     const visibleLogs = showAllDrilldown ? displayLogs : displayLogs.slice(0, 30);
 
-    const statusData = (["완료", "진행 중", "다음행동", "대기중", "예정", "언젠가"] as Status[])
+    const statusData = (["완료", "진행 중", "대기중", "예정", "언젠가"] as Status[])
       .map((s) => ({ name: s, value: entityLogs.filter((l) => l.status === s).length, color: STATUS_CHART_COLORS[s] }))
       .filter((d) => d.value > 0);
     const statusTotal = statusData.reduce((s, d) => s + d.value, 0);

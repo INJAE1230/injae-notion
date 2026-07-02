@@ -39,7 +39,8 @@ function mapPageToWorkLog(page: NotionPage): WorkLog {
     title: titleArr?.[0]?.plain_text || "",
     date: dateObj?.start || "",
     projects: mapProjects(projectMulti),
-    status: (statusObj?.name || "예정") as WorkLog["status"],
+    // "다음행동" 상태는 폐지됨 → 예정으로 흡수 (미이관 기존 레코드 방어, 편집 시 자동 치유)
+    status: ((statusObj?.name === "다음행동" ? "예정" : statusObj?.name) || "예정") as WorkLog["status"],
     content: richText?.[0]?.plain_text || "",
     tags: (multiSelect?.map((t) => t.name) || []) as Tag[],
     hours: numberVal ?? null,

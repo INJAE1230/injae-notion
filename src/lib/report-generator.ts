@@ -31,11 +31,10 @@ function formatDate(dateStr: string) {
 function groupByStatus(logs: WorkLog[]) {
   const completed = logs.filter((l) => l.status === "완료");
   const inProgress = logs.filter((l) => l.status === "진행 중");
-  const nextAction = logs.filter((l) => l.status === "다음행동");
   const waiting = logs.filter((l) => l.status === "대기중");
   const someday = logs.filter((l) => l.status === "언젠가");
   const planned = logs.filter((l) => l.status === "예정");
-  return { completed, inProgress, nextAction, waiting, someday, planned };
+  return { completed, inProgress, waiting, someday, planned };
 }
 
 function formatLogLine(log: WorkLog, idx: number) {
@@ -57,7 +56,7 @@ export function generateReport(
   const typeLabel = type === "daily" ? "일일" : type === "weekly" ? "주간" : "월간";
   const title = `[${typeLabel} 업무 보고서] ${formatDate(dateFrom)}${dateFrom !== dateTo ? ` ~ ${formatDate(dateTo)}` : ""}`;
 
-  const { completed, inProgress, nextAction, waiting, someday, planned } = groupByStatus(logs);
+  const { completed, inProgress, waiting, someday, planned } = groupByStatus(logs);
   const totalHours = logs.reduce((sum, l) => sum + (l.hours || 0), 0);
   const completionRate = logs.length > 0 ? Math.round((completed.length / logs.length) * 100) : 0;
 
@@ -72,12 +71,6 @@ export function generateReport(
   if (inProgress.length > 0) {
     sections.push("■ 진행 중 업무");
     inProgress.forEach((log, i) => sections.push(formatLogLine(log, i + 1)));
-    sections.push("");
-  }
-
-  if (nextAction.length > 0) {
-    sections.push("■ 다음행동 업무");
-    nextAction.forEach((log, i) => sections.push(formatLogLine(log, i + 1)));
     sections.push("");
   }
 

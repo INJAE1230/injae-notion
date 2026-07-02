@@ -22,7 +22,7 @@ export interface TrackFormData {
 export type Frequency = "매일" | "매주" | "격주" | "매월" | "매월N번째요일" | "매분기" | "반기" | "매년";
 export type PresetCategory = "정기 보고" | "정산/회계" | "회의" | "관리 업무";
 export type Project = "청초수" | "씨푸드" | "JS코퍼" | "JKK" | "646미터퍼세크" | "아일랜드" | "청초수(신관)" | "에그롤린대전" | "개인일정";
-export type Status = "예정" | "다음행동" | "대기중" | "언젠가" | "진행 중" | "완료";
+export type Status = "예정" | "대기중" | "언젠가" | "진행 중" | "완료";
 export type Priority = "긴급+중요" | "중요" | "긴급" | "낮음";
 export type Tag = "회의" | "개발" | "기획" | "리뷰" | "버그";
 export type AchievementRating = "상" | "중" | "하";

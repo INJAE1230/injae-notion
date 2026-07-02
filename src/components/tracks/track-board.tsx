@@ -76,7 +76,6 @@ const ENTITY_COLORS: Record<string, string> = {
 };
 
 const STATUS_CHART_COLORS: Record<string, string> = {
-  "다음행동": "#818cf8",
   "진행 중": "#6366f1",
   "대기중": "#fb923c",
   "예정": "#eab308",
@@ -156,7 +155,7 @@ export function TrackBoard({ tracks: initialTracks, allLogs, initialTrackId }: T
   const trackStats = (track: Track) => {
     const logs = trackLogs(track);
     const completed = logs.filter((l) => l.status === "완료").length;
-    const inProgress = logs.filter((l) => l.status === "진행 중" || l.status === "다음행동").length;
+    const inProgress = logs.filter((l) => l.status === "진행 중").length;
     const hours = logs.reduce((s, l) => s + (l.hours || 0), 0);
     return {
       total: logs.length,
@@ -340,7 +339,7 @@ export function TrackBoard({ tracks: initialTracks, allLogs, initialTrackId }: T
     const filtered = statusFilter === "all" ? logs : logs.filter((l) => l.status === statusFilter);
     const visible = showAllLogs ? filtered : filtered.slice(0, 30);
 
-    const statusData = (["완료", "진행 중", "다음행동", "대기중", "예정", "언젠가"] as const)
+    const statusData = (["완료", "진행 중", "대기중", "예정", "언젠가"] as const)
       .map((s) => ({ name: s, value: logs.filter((l) => l.status === s).length, color: STATUS_CHART_COLORS[s] }))
       .filter((d) => d.value > 0);
 
@@ -569,7 +568,7 @@ export function TrackBoard({ tracks: initialTracks, allLogs, initialTrackId }: T
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">전체</SelectItem>
-                    {["다음행동", "진행 중", "대기중", "예정", "언젠가", "완료"].map((s) => (
+                    {["진행 중", "대기중", "예정", "언젠가", "완료"].map((s) => (
                       <SelectItem key={s} value={s}>{s}</SelectItem>
                     ))}
                   </SelectContent>

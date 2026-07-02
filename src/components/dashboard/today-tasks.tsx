@@ -4,14 +4,13 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PROJECT_COLORS } from "@/lib/constants";
-import { CheckCircle2, Circle, Clock, ArrowRight, Hourglass, Bookmark, ListTodo } from "lucide-react";
+import { CheckCircle2, Circle, Clock, Hourglass, Bookmark, ListTodo } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { WorkLog, Status } from "@/lib/types";
 
 const STATUS_ICONS: Record<Status, typeof Circle> = {
   "완료": CheckCircle2,
   "진행 중": Clock,
-  "다음행동": ArrowRight,
   "대기중": Hourglass,
   "언젠가": Bookmark,
   "예정": Circle,
@@ -43,7 +42,6 @@ export function TodayTasks({ logs }: { logs: WorkLog[] }) {
               const iconColor =
                 log.status === "완료" ? "text-emerald-500" :
                 log.status === "진행 중" ? "text-blue-500" :
-                log.status === "다음행동" ? "text-indigo-500" :
                 log.status === "대기중" ? "text-orange-500" :
                 log.status === "언젠가" ? "text-slate-400" :
                 "text-muted-foreground/50";

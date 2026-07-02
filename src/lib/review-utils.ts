@@ -22,7 +22,7 @@ export function categorizeForReview(logs: WorkLog[], weekStart: string, weekEnd:
   );
   const waiting = logs.filter((l) => l.status === "대기중");
   const someday = logs.filter((l) => l.status === "언젠가");
-  const nextActions = logs.filter((l) => l.status === "다음행동");
+  const nextActions = logs.filter((l) => l.status === "예정");
 
   return { completed, incomplete, overdue, waiting, someday, nextActions };
 }

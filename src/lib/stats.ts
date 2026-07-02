@@ -103,7 +103,7 @@ export function getEntityStats(logs: WorkLog[]): EntityStats[] {
       log.projects.some((p) => projects.includes(p))
     );
     const completed = entityLogs.filter((l) => l.status === "완료").length;
-    const inProgress = entityLogs.filter((l) => l.status === "진행 중" || l.status === "다음행동").length;
+    const inProgress = entityLogs.filter((l) => l.status === "진행 중").length;
     const thisMonthLogs = entityLogs.filter((l) => l.date.startsWith(thisMonth)).length;
     const totalHours = entityLogs.reduce((s, l) => s + (l.hours || 0), 0);
 

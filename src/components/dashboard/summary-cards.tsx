@@ -20,8 +20,8 @@ export function SummaryCards({ stats }: { stats: DashboardStats }) {
       border: "border-blue-500/20",
     },
     {
-      title: "다음행동",
-      value: stats.byStatus["다음행동"] || 0,
+      title: "예정",
+      value: stats.byStatus["예정"] || 0,
       unit: "건",
       icon: Zap,
       iconColor: "text-indigo-500",

@@ -20,7 +20,7 @@ export function DeadlineAlert({ logs }: { logs: WorkLog[] }) {
   const [dismissed, setDismissed] = useState(false);
 
   const isActionNeeded = (status: string) =>
-    status === "예정" || status === "다음행동";
+    status === "예정";
 
   const overdue = logs.filter((log) => {
     if (!log.date || !isActionNeeded(log.status)) return false;
