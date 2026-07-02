@@ -2,25 +2,33 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import {
   LayoutDashboard,
   ClipboardList,
   Plus,
-  Columns3,
-  BarChart3,
+  Layers,
+  MoreHorizontal,
 } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { NavContent } from "@/components/layout/sidebar";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/", label: "대시보드", icon: LayoutDashboard },
   { href: "/logs", label: "목록", icon: ClipboardList },
   { href: "/logs/new", label: "추가", icon: Plus, primary: true },
-  { href: "/board", label: "칸반", icon: Columns3 },
-  { href: "/analytics", label: "통계", icon: BarChart3 },
+  { href: "/tracks", label: "트랙", icon: Layers },
 ];
 
 export function MobileBottomNav() {
   const pathname = usePathname();
+  const [moreOpen, setMoreOpen] = useState(false);
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
@@ -35,9 +43,10 @@ export function MobileBottomNav() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  aria-label={item.label}
                   className="flex flex-col items-center justify-center -mt-5"
                 >
-                  <div className="flex h-13 w-13 h-[52px] w-[52px] items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/40 ring-4 ring-background">
+                  <div className="flex h-[52px] w-[52px] items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/40 ring-4 ring-background">
                     <item.icon className="h-5 w-5" />
                   </div>
                 </Link>
@@ -48,6 +57,7 @@ export function MobileBottomNav() {
               <Link
                 key={item.href}
                 href={item.href}
+                aria-label={item.label}
                 className="relative flex flex-col items-center justify-center gap-1 px-4 py-2 rounded-xl"
               >
                 {isActive && (
@@ -70,6 +80,23 @@ export function MobileBottomNav() {
               </Link>
             );
           })}
+
+          <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+            <SheetTrigger asChild>
+              <button
+                type="button"
+                aria-label="더보기"
+                className="relative flex flex-col items-center justify-center gap-1 px-4 py-2 rounded-xl"
+              >
+                <MoreHorizontal className="h-[22px] w-[22px] text-muted-foreground" />
+                <span className="text-[10px] font-medium text-muted-foreground">더보기</span>
+              </button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-64 p-0">
+              <SheetTitle className="sr-only">전체 메뉴</SheetTitle>
+              <NavContent onNavigate={() => setMoreOpen(false)} />
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
     </nav>

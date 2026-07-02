@@ -80,7 +80,7 @@ const NAV_GROUPS = [
   },
 ];
 
-function NavContent({ onNavigate }: { onNavigate?: () => void }) {
+export function NavContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
 
@@ -185,7 +185,7 @@ export function MobileHeader() {
     <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 px-3 md:hidden">
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-9 w-9">
+          <Button variant="ghost" size="icon" className="h-9 w-9" aria-label="메뉴 열기">
             <Menu className="h-5 w-5" />
           </Button>
         </SheetTrigger>
@@ -195,12 +195,13 @@ export function MobileHeader() {
         </SheetContent>
       </Sheet>
 
-      <span className="text-[15px] font-semibold absolute left-1/2 -translate-x-1/2">{title}</span>
+      <span className="flex-1 truncate px-2 text-center text-[15px] font-semibold">{title}</span>
 
       <Button
         variant="ghost"
         size="icon"
         className="h-9 w-9"
+        aria-label="테마 변경"
         onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
       >
         <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />

@@ -128,7 +128,7 @@ export function QuickMemoInput() {
                 handleParse();
               }
             }}
-            className="min-h-[60px] resize-none bg-white dark:bg-background"
+            className="min-h-[60px] resize-none bg-background"
             rows={2}
           />
           <div className="flex flex-col gap-1">
@@ -136,6 +136,7 @@ export function QuickMemoInput() {
               onClick={handleParse}
               disabled={loading || (!text.trim() && files.length === 0)}
               className="shrink-0"
+              aria-label="AI로 정리하기"
             >
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -150,6 +151,7 @@ export function QuickMemoInput() {
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
               title="파일 첨부"
+              aria-label="파일 첨부"
             >
               {uploading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
