@@ -60,7 +60,7 @@ export interface LeaveBalance {
 export const POSITIONS: Position[] = ["사원", "주임", "팀장", "과장", "차장", "대표"];
 export const EMPLOYMENT_STATUSES: EmploymentStatus[] = ["재직", "퇴사"];
 export const ATTENDANCE_CATEGORIES: AttendanceCategory[] = [
-  "연차", "반차", "정휴무", "관공휴일",
+  "정상근무", "연차", "반차", "정휴무", "관공휴일",
   "대출", "출장", "조퇴", "결근", "근로자의날",
 ];
 

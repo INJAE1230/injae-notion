@@ -16,6 +16,7 @@ const CELL_TO_CATEGORY: Record<string, AttendanceCategory | null> = {
 };
 
 const CATEGORY_TO_CELL: Record<string, string> = {
+  "정상근무": "정·근",
   "정휴무": "휴무",
   "관공휴일": "관공",
   "연차": "연차",
@@ -44,18 +45,17 @@ function getCellText(row: ExcelJS.Row, col: number): string {
   return String(val).trim();
 }
 
-export function parseAttendanceExcel(buffer: ArrayBuffer): Promise<ParsedAttendanceRow[]> {
-  return parseAttendanceExcelAsync(buffer);
+export function parseAttendanceExcel(buffer: ArrayBuffer, year?: number): Promise<ParsedAttendanceRow[]> {
+  return parseAttendanceExcelAsync(buffer, year ?? new Date().getFullYear());
 }
 
-async function parseAttendanceExcelAsync(buffer: ArrayBuffer): Promise<ParsedAttendanceRow[]> {
+async function parseAttendanceExcelAsync(buffer: ArrayBuffer, year: number): Promise<ParsedAttendanceRow[]> {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer as unknown as ExcelJS.Buffer);
   const ws = workbook.worksheets[0];
   if (!ws) return [];
 
   const results: ParsedAttendanceRow[] = [];
-  const year = new Date().getFullYear();
   let dateColumns: { col: number; date: string }[] = [];
 
   ws.eachRow((row, rowNumber) => {

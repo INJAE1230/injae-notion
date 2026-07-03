@@ -68,6 +68,9 @@ export function HrDashboard({ initialEmployees, initialAttendance }: HrDashboard
   const [exportMonth, setExportMonth] = useState(new Date().toISOString().slice(0, 7));
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [importYear, setImportYear] = useState(new Date().getFullYear().toString());
+  const [importFile, setImportFile] = useState<File | null>(null);
 
   const activeEmployees = employees.filter((e) => e.status === "재직");
 
@@ -97,7 +100,7 @@ export function HrDashboard({ initialEmployees, initialAttendance }: HrDashboard
   const summaryCards = [
     { title: "재직 인원", value: activeEmployees.length, icon: UserCheck, color: "text-green-500", suffix: "명" },
     { title: "퇴사", value: employees.length - activeEmployees.length, icon: UserX, color: "text-gray-400", suffix: "명" },
-    { title: "이번 달 휴무/예외", value: attendance.filter((a) => a.date.startsWith(new Date().toISOString().slice(0, 7))).length, icon: CalendarDays, color: "text-blue-500", suffix: "건" },
+    { title: "이번 달 휴무/예외", value: attendance.filter((a) => a.date.startsWith(new Date().toISOString().slice(0, 7)) && a.category !== "정상근무").length, icon: CalendarDays, color: "text-blue-500", suffix: "건" },
     { title: "평균 잔여연차", value: leaveBalances.length > 0 ? (leaveBalances.reduce((s, l) => s + l.remainingLeave, 0) / leaveBalances.length).toFixed(1) : "0", icon: Palmtree, color: "text-emerald-500", suffix: "일" },
   ];
 
@@ -213,18 +216,22 @@ export function HrDashboard({ initialEmployees, initialAttendance }: HrDashboard
     }
   };
 
-  const handleImportExcel = async (file: File) => {
+  const handleImportExcel = async (file: File, year: string) => {
     setImportLoading(true);
     try {
       const form = new FormData();
       form.append("file", file);
+      form.append("year", year);
       const res = await fetch("/api/hr/attendance/import", { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       let msg = `${data.created}건 등록 완료`;
       if (data.skippedDuplicate > 0) msg += ` (중복 ${data.skippedDuplicate}건 스킵)`;
       if (data.unmatchedNames?.length > 0) msg += `\n매칭 실패: ${data.unmatchedNames.join(", ")}`;
+      if (data.ambiguousNames?.length > 0) msg += `\n동명이인으로 스킵(직접 등록 필요): ${data.ambiguousNames.join(", ")}`;
       toast.success(msg);
+      setShowImportDialog(false);
+      setImportFile(null);
       await refreshData();
     } catch (e) {
       toastError(e instanceof Error ? e.message : "엑셀 가져오기 실패");
@@ -363,25 +370,9 @@ export function HrDashboard({ initialEmployees, initialAttendance }: HrDashboard
             <Button size="sm" variant="outline" className="gap-1" onClick={() => setShowBulkDialog(true)}>
               <CalendarDays className="h-3.5 w-3.5" /> 월간 정휴무
             </Button>
-            <label className="inline-flex">
-              <input
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) handleImportExcel(f);
-                  e.target.value = "";
-                }}
-                disabled={importLoading}
-              />
-              <Button size="sm" variant="outline" className="gap-1 cursor-pointer" asChild disabled={importLoading}>
-                <span>
-                  {importLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                  가져오기
-                </span>
-              </Button>
-            </label>
+            <Button size="sm" variant="outline" className="gap-1" onClick={() => setShowImportDialog(true)}>
+              <Upload className="h-3.5 w-3.5" /> 가져오기
+            </Button>
             <Button size="sm" variant="outline" className="gap-1" onClick={() => setShowExportDialog(true)}>
               <Download className="h-3.5 w-3.5" /> 내보내기
             </Button>
@@ -674,6 +665,46 @@ export function HrDashboard({ initialEmployees, initialAttendance }: HrDashboard
               <Button variant="outline" size="sm" onClick={() => setShowExportDialog(false)}>취소</Button>
               <Button size="sm" className="gap-1" onClick={handleExportExcel} disabled={exportLoading}>
                 {exportLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Download className="h-3.5 w-3.5" /> 다운로드</>}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showImportDialog} onOpenChange={(o) => { setShowImportDialog(o); if (!o) setImportFile(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>근태 현황 엑셀 가져오기</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs font-medium">데이터 연도</label>
+              <Input
+                type="number"
+                value={importYear}
+                onChange={(e) => setImportYear(e.target.value)}
+                className="h-9"
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">
+                파일 안 날짜(예: 6/1)에 이 연도를 붙여서 등록합니다. 작년 이전 자료를 올릴 땐 꼭 확인하세요.
+              </p>
+            </div>
+            <div>
+              <label className="text-xs font-medium">파일</label>
+              <Input
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                className="h-9 pt-1.5"
+                onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowImportDialog(false)}>취소</Button>
+              <Button
+                size="sm"
+                className="gap-1"
+                disabled={!importFile || !importYear || importLoading}
+                onClick={() => importFile && handleImportExcel(importFile, importYear)}
+              >
+                {importLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Upload className="h-3.5 w-3.5" /> 가져오기</>}
               </Button>
             </div>
           </div>

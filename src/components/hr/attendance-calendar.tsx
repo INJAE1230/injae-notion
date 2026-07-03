@@ -186,10 +186,10 @@ export function AttendanceCalendar({
                 ${!day.isCurrentMonth ? "opacity-30" : ""}
                 ${cellBg}
                 ${isToday ? "ring-1 ring-inset ring-teal-500" : ""}
-                ${day.isCurrentMonth && !record && !isWeekend ? "cursor-pointer hover:bg-accent/50" : ""}
+                ${day.isCurrentMonth && !record ? "cursor-pointer hover:bg-accent/50" : ""}
               `}
               onClick={() => {
-                if (day.isCurrentMonth && !record && !isWeekend) {
+                if (day.isCurrentMonth && !record) {
                   onAddClick(day.date, selectedEmployeeId);
                 }
               }}
@@ -200,7 +200,7 @@ export function AttendanceCalendar({
                 {day.day}
               </div>
               <div className="mt-0.5">{cellContent}</div>
-              {day.isCurrentMonth && !record && !isWeekend && (
+              {day.isCurrentMonth && !record && (
                 <Plus className="h-3 w-3 text-muted-foreground/0 hover:text-muted-foreground/50 absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity" />
               )}
             </div>
