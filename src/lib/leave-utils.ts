@@ -43,6 +43,14 @@ export function calculateRemainingLeave(annualLeaveTotal: number, records: Atten
   return annualLeaveTotal - calculateUsedLeave(records);
 }
 
+export function calculateUsedUnusedRest(records: AttendanceRecord[]): number {
+  return records.filter((r) => r.category === "미사용휴무").length;
+}
+
+export function calculateRemainingUnusedRest(unusedRestTotal: number, records: AttendanceRecord[]): number {
+  return unusedRestTotal - calculateUsedUnusedRest(records);
+}
+
 export function isEarlyLeavePayDeductible(deductionMethod: DeductionMethod | undefined): boolean {
   return deductionMethod === "연차" || deductionMethod === "정휴무";
 }

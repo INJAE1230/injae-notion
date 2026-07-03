@@ -108,12 +108,13 @@ export interface AttendanceExportEmployee {
 }
 
 // 근태현황.xlsx 원본 양식과 맞춘 휴무성 카테고리 (출근 없이 비고에 순번만 표기)
-const LEAVE_CATEGORIES: AttendanceCategory[] = ["관공휴일", "정휴무", "연차", "반차"];
+const LEAVE_CATEGORIES: AttendanceCategory[] = ["관공휴일", "정휴무", "연차", "반차", "미사용휴무"];
 const LEAVE_LABELS: Record<string, string> = {
   "관공휴일": "관공휴무",
   "정휴무": "정 휴무",
   "연차": "연차",
   "반차": "반차",
+  "미사용휴무": "미사용휴무",
 };
 
 function parseHHMM(v: string): [number, number] {

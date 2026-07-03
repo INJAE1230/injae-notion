@@ -48,6 +48,7 @@ export function EmployeeForm({ initial, onSubmit, onCancel, submitLabel = "등�
     joinDate: defaultJoinDate,
     status: initial?.status || "재직",
     annualLeaveTotal: initial?.annualLeaveTotal ?? calcLegalLeave(defaultJoinDate),
+    unusedRestTotal: initial?.unusedRestTotal ?? 0,
     restDays: initial?.restDays || [],
   });
   const [manualLeave, setManualLeave] = useState(!!initial);
@@ -182,6 +183,20 @@ export function EmployeeForm({ initial, onSubmit, onCancel, submitLabel = "등�
             </button>
           )}
         </div>
+      </div>
+
+      <div>
+        <label className="text-xs font-medium">미사용휴무발생</label>
+        <Input
+          type="number"
+          min={0}
+          step={1}
+          value={form.unusedRestTotal}
+          onChange={(e) => setForm({ ...form, unusedRestTotal: parseFloat(e.target.value) || 0 })}
+        />
+        <p className="text-[11px] text-muted-foreground mt-1">
+          초과근무 등으로 발생한 별도 휴무 개수. 발생할 때마다 이 숫자를 올려주세요.
+        </p>
       </div>
 
       <div>

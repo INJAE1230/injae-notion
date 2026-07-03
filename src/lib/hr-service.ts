@@ -11,7 +11,7 @@ import type {
   Position,
   AttendanceCategory,
 } from "./hr-types";
-import { parseDeductionMethod, encodeDeductionMethod, calculateRemainingLeave } from "./leave-utils";
+import { parseDeductionMethod, encodeDeductionMethod, calculateRemainingLeave, calculateRemainingUnusedRest } from "./leave-utils";
 
 function getEmployeeDbId(): string {
   const id = process.env.NOTION_HR_EMPLOYEE_DB_ID;
@@ -38,6 +38,8 @@ function mapEmployee(page: NotionPage): Employee {
   const statusObj = p["재직상태"]?.select as { name: string } | null | undefined;
   const leaveTotal = p["연차발생일수"]?.number as number | null | undefined;
   const leaveRemain = p["잔여연차"]?.number as number | null | undefined;
+  const unusedRestTotalNum = p["미사용휴무발생"]?.number as number | null | undefined;
+  const unusedRestRemainNum = p["잔여미사용휴무"]?.number as number | null | undefined;
   const restDaysText = p["정휴무요일"]?.rich_text as { plain_text: string }[] | undefined;
 
   const entityName = entityObj?.name;
@@ -56,6 +58,8 @@ function mapEmployee(page: NotionPage): Employee {
     status: (statusObj?.name as EmploymentStatus) || "재직",
     annualLeaveTotal: leaveTotal ?? 15,
     remainingLeave: leaveRemain ?? 0,
+    unusedRestTotal: unusedRestTotalNum ?? 0,
+    remainingUnusedRest: unusedRestRemainNum ?? 0,
     restDays,
   };
 }
@@ -97,6 +101,8 @@ export async function createEmployee(data: EmployeeFormData): Promise<string> {
     "재직상태": { select: { name: data.status } },
     "연차발생일수": { number: data.annualLeaveTotal },
     "잔여연차": { number: data.annualLeaveTotal },
+    "미사용휴무발생": { number: data.unusedRestTotal },
+    "잔여미사용휴무": { number: data.unusedRestTotal },
   };
 
   if (data.entity) properties["법인"] = { select: { name: data.entity } };
@@ -121,6 +127,7 @@ export async function updateEmployee(id: string, data: Partial<EmployeeFormData>
   if (data.joinDate !== undefined) properties["입사일"] = { date: { start: data.joinDate } };
   if (data.status !== undefined) properties["재직상태"] = { select: { name: data.status } };
   if (data.annualLeaveTotal !== undefined) properties["연차발생일수"] = { number: data.annualLeaveTotal };
+  if (data.unusedRestTotal !== undefined) properties["미사용휴무발생"] = { number: data.unusedRestTotal };
   if (data.restDays !== undefined) properties["정휴무요일"] = { rich_text: [{ text: { content: data.restDays.join(",") } }] };
 
   await notion.pages.update({
@@ -133,6 +140,13 @@ export async function patchRemainingLeave(employeeId: string, remainingLeave: nu
   await notion.pages.update({
     page_id: employeeId,
     properties: { "잔여연차": { number: remainingLeave } },
+  } as Parameters<typeof notion.pages.update>[0]);
+}
+
+export async function patchRemainingUnusedRest(employeeId: string, remainingUnusedRest: number): Promise<void> {
+  await notion.pages.update({
+    page_id: employeeId,
+    properties: { "잔여미사용휴무": { number: remainingUnusedRest } },
   } as Parameters<typeof notion.pages.update>[0]);
 }
 
@@ -222,7 +236,11 @@ export async function recalculateLeave(employeeId: string): Promise<number> {
 
   const empRecords = allAttendance.filter((a) => a.employeeId === employeeId);
   const remaining = calculateRemainingLeave(emp.annualLeaveTotal, empRecords);
+  const remainingUnusedRest = calculateRemainingUnusedRest(emp.unusedRestTotal, empRecords);
 
-  await patchRemainingLeave(employeeId, remaining);
+  await Promise.all([
+    patchRemainingLeave(employeeId, remaining),
+    patchRemainingUnusedRest(employeeId, remainingUnusedRest),
+  ]);
   return remaining;
 }

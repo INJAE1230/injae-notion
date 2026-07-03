@@ -101,6 +101,7 @@ export const employeeFormSchema = z.object({
   joinDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   status: z.enum(employmentStatuses),
   annualLeaveTotal: z.number().min(0),
+  unusedRestTotal: z.number().min(0),
   restDays: z.array(z.string()),
 });
 

@@ -35,7 +35,7 @@ import {
   EMPLOYMENT_STATUS_COLORS,
   ATTENDANCE_CATEGORY_COLORS,
 } from "@/lib/hr-types";
-import { calculateUsedLeave } from "@/lib/leave-utils";
+import { calculateUsedLeave, calculateUsedUnusedRest } from "@/lib/leave-utils";
 import type { Employee, AttendanceRecord, EmployeeFormData, AttendanceFormData, LeaveBalance } from "@/lib/hr-types";
 import { EmployeeForm } from "./employee-form";
 import { AttendanceForm } from "./attendance-form";
@@ -89,10 +89,13 @@ export function HrDashboard({ initialEmployees, initialAttendance }: HrDashboard
     return activeEmployees.map((emp) => {
       const empRecords = attendance.filter((a) => a.employeeId === emp.id);
       const used = calculateUsedLeave(empRecords);
+      const usedRest = calculateUsedUnusedRest(empRecords);
       return {
         employee: emp,
         usedLeave: used,
         remainingLeave: emp.annualLeaveTotal - used,
+        usedUnusedRest: usedRest,
+        remainingUnusedRest: emp.unusedRestTotal - usedRest,
       };
     });
   }, [activeEmployees, attendance]);
@@ -540,6 +543,12 @@ export function HrDashboard({ initialEmployees, initialAttendance }: HrDashboard
                           <span className="text-[11px] text-muted-foreground">사용 {lb.usedLeave}일</span>
                           <span className="text-[11px] text-muted-foreground">잔여 {lb.remainingLeave}일</span>
                         </div>
+                        {lb.employee.unusedRestTotal > 0 && (
+                          <div className="flex justify-between mt-2 pt-2 border-t text-[11px]">
+                            <span className="text-muted-foreground">미사용휴무 사용 {lb.usedUnusedRest}개</span>
+                            <span className="font-medium">잔여 {lb.remainingUnusedRest}개 / {lb.employee.unusedRestTotal}개</span>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

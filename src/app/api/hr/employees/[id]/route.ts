@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { updateEmployee, deleteEmployee } from "@/lib/hr-service";
+import { updateEmployee, deleteEmployee, recalculateLeave } from "@/lib/hr-service";
 import { employeePatchSchema, validateBody } from "@/lib/validations";
 
 export async function PATCH(
@@ -14,6 +14,9 @@ export async function PATCH(
       return NextResponse.json({ error: parsed.error }, { status: 400 });
     }
     await updateEmployee(id, parsed.data);
+    if (parsed.data.annualLeaveTotal !== undefined || parsed.data.unusedRestTotal !== undefined) {
+      await recalculateLeave(id);
+    }
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("직원 수정 실패:", error);
