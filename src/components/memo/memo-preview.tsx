@@ -2,16 +2,26 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, X, Loader2, Pencil, Trash2, Plus } from "lucide-react";
+import { Check, X, Loader2, Pencil, Trash2, Plus, Combine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { toastError } from "@/lib/toast-utils";
 import { STATUS_COLORS, PROJECT_COLORS, TAG_COLORS, PRIORITY_COLORS } from "@/lib/constants";
 import { Paperclip } from "lucide-react";
-import type { WorkLogFormData } from "@/lib/types";
+import type { WorkLogFormData, Status } from "@/lib/types";
+
+// 낮을수록 급함 → 병합 시 가장 시급한 상태를 채택
+const STATUS_URGENCY: Record<Status, number> = {
+  "진행 중": 0,
+  "대기중": 1,
+  "예정": 2,
+  "언젠가": 3,
+  "완료": 4,
+};
 
 interface MemoPreviewProps {
   entries: WorkLogFormData[];
@@ -31,15 +41,64 @@ export function MemoPreview({
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
 
   function removeEntry(index: number) {
     onUpdate(entries.filter((_, i) => i !== index));
+    setSelected(new Set());
   }
 
   function updateEntry(index: number, field: string, value: string) {
     const updated = [...entries];
     updated[index] = { ...updated[index], [field]: value };
     onUpdate(updated);
+  }
+
+  function toggleSelect(index: number) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  }
+
+  function mergeSelected() {
+    const idxArr = Array.from(selected).sort((a, b) => a - b);
+    if (idxArr.length < 2) return;
+    const picked = idxArr.map((i) => entries[i]);
+
+    const merged: WorkLogFormData = {
+      ...picked[0],
+      projects: Array.from(new Set(picked.flatMap((e) => e.projects))),
+      tags: Array.from(new Set(picked.flatMap((e) => e.tags))),
+      status: picked.reduce((best, e) =>
+        STATUS_URGENCY[e.status] < STATUS_URGENCY[best.status] ? e : best
+      ).status,
+      priority: picked.find((e) => e.priority)?.priority ?? null,
+      hours: picked.some((e) => e.hours != null)
+        ? picked.reduce((sum, e) => sum + (e.hours || 0), 0)
+        : null,
+      content: Array.from(new Set(picked.map((e) => e.content).filter(Boolean))).join("\n"),
+      link: picked.find((e) => e.link)?.link ?? null,
+      attachments: picked.flatMap((e) => e.attachments || []),
+    };
+
+    const result: WorkLogFormData[] = [];
+    let inserted = false;
+    entries.forEach((e, i) => {
+      if (idxArr.includes(i)) {
+        if (!inserted) {
+          result.push(merged);
+          inserted = true;
+        }
+        return;
+      }
+      result.push(e);
+    });
+    onUpdate(result);
+    setSelected(new Set());
+    toast.success(`${idxArr.length}건을 1건으로 합쳤습니다`);
   }
 
   async function handleSave() {
@@ -103,6 +162,12 @@ export function MemoPreview({
             )}
           </div>
           <div className="flex gap-2">
+            {selected.size >= 2 && (
+              <Button variant="secondary" size="sm" onClick={mergeSelected}>
+                <Combine className="h-3.5 w-3.5 mr-1" />
+                {selected.size}건 합치기
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={onReset}>
               <X className="h-3.5 w-3.5 mr-1" />
               취소
@@ -126,13 +191,27 @@ export function MemoPreview({
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
+        {entries.length >= 2 && (
+          <p className="text-xs text-muted-foreground -mb-1">
+            같은 작업이 여러 건으로 쪼개졌다면 체크 후 합치기를 눌러 1건으로 합칠 수 있어요.
+          </p>
+        )}
         {entries.map((entry, idx) => (
           <div
             key={idx}
-            className="rounded-lg border p-3 space-y-2 hover:border-indigo-300 transition-colors"
+            className={`rounded-lg border p-3 space-y-2 transition-colors ${
+              selected.has(idx) ? "border-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/20" : "hover:border-indigo-300"
+            }`}
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                {entries.length >= 2 && (
+                  <Checkbox
+                    checked={selected.has(idx)}
+                    onCheckedChange={() => toggleSelect(idx)}
+                    className="shrink-0"
+                  />
+                )}
                 {entry.appendTo && (
                   <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 shrink-0 text-[10px]">
                     <Plus className="h-2.5 w-2.5 mr-0.5" />추가
