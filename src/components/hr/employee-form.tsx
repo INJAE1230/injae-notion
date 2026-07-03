@@ -7,28 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Info } from "lucide-react";
 import { ENTITIES } from "@/lib/constants";
 import { POSITIONS, EMPLOYMENT_STATUSES, WEEKDAYS } from "@/lib/hr-types";
+import { calcLegalLeave, monthsElapsed } from "@/lib/leave-utils";
 import type { EmployeeFormData } from "@/lib/hr-types";
 import type { Entity } from "@/lib/constants";
-
-// 입사일부터 오늘까지 개근한 만 개월 수 (해당 일자가 안 지났으면 그 달은 미포함)
-function monthsElapsed(joinDate: string): number {
-  const join = new Date(joinDate + "T00:00:00");
-  const now = new Date();
-  let months = (now.getFullYear() - join.getFullYear()) * 12 + (now.getMonth() - join.getMonth());
-  if (now.getDate() < join.getDate()) months--;
-  return Math.max(0, months);
-}
-
-function calcLegalLeave(joinDate: string): number {
-  if (!joinDate) return 15;
-  const join = new Date(joinDate + "T00:00:00");
-  const now = new Date();
-  const years = (now.getTime() - join.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
-  // 1년 미만: 근로기준법 60조 2항 — 개근한 달마다 1일씩, 최대 11일
-  if (years < 1) return Math.min(monthsElapsed(joinDate), 11);
-  if (years < 3) return 15;
-  return Math.min(15 + Math.floor((years - 1) / 2), 25);
-}
 
 function getLeavGuide(joinDate: string): string {
   if (!joinDate) return "";

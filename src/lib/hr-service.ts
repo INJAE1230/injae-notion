@@ -11,7 +11,7 @@ import type {
   Position,
   AttendanceCategory,
 } from "./hr-types";
-import { parseDeductionMethod, encodeDeductionMethod, calculateRemainingLeave, calculateRemainingUnusedRest } from "./leave-utils";
+import { parseDeductionMethod, encodeDeductionMethod, calculateRemainingLeave, calculateRemainingUnusedRest, calcLegalLeave } from "./leave-utils";
 
 function getEmployeeDbId(): string {
   const id = process.env.NOTION_HR_EMPLOYEE_DB_ID;
@@ -263,4 +263,29 @@ export async function recalculateLeave(employeeId: string): Promise<number> {
     patchRemainingUnusedRest(employeeId, remainingUnusedRest),
   ]);
   return remaining;
+}
+
+// 입사 1년 미만 직원의 연차발생일수를 매달 자동 갱신 (근로기준법 60조 2항 — 개근 개월당 1일, 최대 11일)
+// 수동으로 더 높게 조정해둔 값은 덮어쓰지 않도록 계산값이 더 큰 경우에만 갱신
+export async function recalcJuniorEmployeeLeave(): Promise<
+  { id: string; name: string; from: number; to: number }[]
+> {
+  const employees = await getAllEmployees();
+  const now = new Date();
+  const updated: { id: string; name: string; from: number; to: number }[] = [];
+
+  for (const emp of employees) {
+    if (emp.status !== "재직" || !emp.joinDate) continue;
+    const years = (now.getTime() - new Date(emp.joinDate + "T00:00:00").getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+    if (years >= 1) continue;
+
+    const legal = calcLegalLeave(emp.joinDate, now);
+    if (legal > emp.annualLeaveTotal) {
+      await updateEmployee(emp.id, { annualLeaveTotal: legal });
+      await recalculateLeave(emp.id);
+      updated.push({ id: emp.id, name: emp.name, from: emp.annualLeaveTotal, to: legal });
+    }
+  }
+
+  return updated;
 }

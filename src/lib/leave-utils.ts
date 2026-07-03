@@ -54,3 +54,22 @@ export function calculateRemainingUnusedRest(unusedRestTotal: number, records: A
 export function isEarlyLeavePayDeductible(deductionMethod: DeductionMethod | undefined): boolean {
   return deductionMethod === "연차" || deductionMethod === "정휴무";
 }
+
+// 입사일부터 기준일까지 개근한 만 개월 수 (해당 일자가 안 지났으면 그 달은 미포함)
+export function monthsElapsed(joinDate: string, asOf: Date = new Date()): number {
+  const join = new Date(joinDate + "T00:00:00");
+  let months = (asOf.getFullYear() - join.getFullYear()) * 12 + (asOf.getMonth() - join.getMonth());
+  if (asOf.getDate() < join.getDate()) months--;
+  return Math.max(0, months);
+}
+
+// 근로기준법 60조 기준 법정 연차 발생일수
+export function calcLegalLeave(joinDate: string, asOf: Date = new Date()): number {
+  if (!joinDate) return 15;
+  const join = new Date(joinDate + "T00:00:00");
+  const years = (asOf.getTime() - join.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+  // 1년 미만: 개근한 달마다 1일씩, 최대 11일
+  if (years < 1) return Math.min(monthsElapsed(joinDate, asOf), 11);
+  if (years < 3) return 15;
+  return Math.min(15 + Math.floor((years - 1) / 2), 25);
+}
