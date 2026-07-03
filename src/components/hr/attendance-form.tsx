@@ -3,27 +3,38 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Loader2, Trash2 } from "lucide-react";
 import { ATTENDANCE_CATEGORIES } from "@/lib/hr-types";
+import { parseDeductionMethod, stripDeductionPrefix } from "@/lib/leave-utils";
 import type { AttendanceFormData, AttendanceCategory, DeductionMethod, Employee } from "@/lib/hr-types";
 
 interface AttendanceFormProps {
   employees: Employee[];
   onSubmit: (data: AttendanceFormData, employeeName: string) => Promise<void>;
   onCancel: () => void;
-  initialEmployeeId?: string;
-  initialDate?: string;
+  initial?: Partial<AttendanceFormData>;
+  submitLabel?: string;
+  onDelete?: () => Promise<void>;
+  deleting?: boolean;
 }
 
-export function AttendanceForm({ employees, onSubmit, onCancel, initialEmployeeId, initialDate }: AttendanceFormProps) {
+function today(): string {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
+}
+
+export function AttendanceForm({ employees, onSubmit, onCancel, initial, submitLabel = "등록", onDelete, deleting }: AttendanceFormProps) {
   const activeEmployees = employees.filter((e) => e.status === "재직");
+  const initialCategory = initial?.category || "연차";
+  const initialNote = initial?.note || "";
 
   const [form, setForm] = useState<AttendanceFormData>({
-    employeeId: initialEmployeeId || activeEmployees[0]?.id || "",
-    date: initialDate || (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`; })(),
-    category: "연차",
-    note: "",
-    deductionMethod: undefined,
+    employeeId: initial?.employeeId || activeEmployees[0]?.id || "",
+    date: initial?.date || today(),
+    category: initialCategory,
+    note: initialCategory === "조퇴" ? stripDeductionPrefix(initialNote) : initialNote,
+    deductionMethod: initial?.deductionMethod ?? (initialCategory === "조퇴" ? parseDeductionMethod(initialNote) || "연차" : undefined),
   });
   const [loading, setLoading] = useState(false);
 
@@ -33,7 +44,7 @@ export function AttendanceForm({ employees, onSubmit, onCancel, initialEmployeeI
     setForm((prev) => ({
       ...prev,
       category,
-      deductionMethod: category === "조퇴" ? "연차" : undefined,
+      deductionMethod: category === "조퇴" ? (prev.deductionMethod || "연차") : undefined,
     }));
   };
 
@@ -113,26 +124,39 @@ export function AttendanceForm({ employees, onSubmit, onCancel, initialEmployeeI
 
       <div>
         <label className="text-xs font-medium">비고</label>
-        <Input
+        <Textarea
           value={form.note}
           onChange={(e) => setForm({ ...form, note: e.target.value })}
           placeholder="비고 입력"
+          className="min-h-[70px] resize-none"
         />
       </div>
 
       {selectedEmployee && (
         <div className="text-xs text-muted-foreground bg-accent/50 rounded-md px-3 py-2">
           잔여연차: <span className="font-semibold">{selectedEmployee.remainingLeave}일</span> / {selectedEmployee.annualLeaveTotal}일
+          {selectedEmployee.unusedRestTotal > 0 && (
+            <>
+              {" · "}미사용휴무: <span className="font-semibold">{selectedEmployee.remainingUnusedRest}개</span> / {selectedEmployee.unusedRestTotal}개
+            </>
+          )}
         </div>
       )}
 
-      <div className="flex justify-end gap-2 pt-2">
-        <Button type="button" variant="outline" size="sm" onClick={onCancel}>
-          취소
-        </Button>
-        <Button type="submit" size="sm" disabled={loading || !form.employeeId}>
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "등록"}
-        </Button>
+      <div className="flex justify-between gap-2 pt-2">
+        {onDelete ? (
+          <Button type="button" variant="destructive" size="sm" className="gap-1" onClick={onDelete} disabled={deleting || loading}>
+            {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Trash2 className="h-3.5 w-3.5" /> 삭제</>}
+          </Button>
+        ) : <span />}
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={onCancel}>
+            취소
+          </Button>
+          <Button type="submit" size="sm" disabled={loading || deleting || !form.employeeId}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : submitLabel}
+          </Button>
+        </div>
       </div>
     </form>
   );

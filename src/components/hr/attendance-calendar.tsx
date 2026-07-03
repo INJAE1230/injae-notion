@@ -16,7 +16,7 @@ interface AttendanceCalendarProps {
   employees: Employee[];
   attendance: AttendanceRecord[];
   onAddClick: (date: string, employeeId: string) => void;
-  onDeleteClick: (record: AttendanceRecord) => void;
+  onRecordClick: (record: AttendanceRecord) => void;
 }
 
 function toLocalDateStr(d: Date): string {
@@ -72,7 +72,7 @@ export function AttendanceCalendar({
   employees,
   attendance,
   onAddClick,
-  onDeleteClick,
+  onRecordClick,
 }: AttendanceCalendarProps) {
   const activeEmployees = employees.filter((e) => e.status === "재직");
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>(
@@ -160,8 +160,8 @@ export function AttendanceCalendar({
             cellContent = (
               <button
                 className="w-full group"
-                onClick={() => onDeleteClick(record)}
-                title="클릭하여 삭제"
+                onClick={() => onRecordClick(record)}
+                title="클릭하여 수정"
               >
                 <Badge variant="secondary" className={`text-[9px] px-1 py-0 ${colors} group-hover:opacity-70`}>
                   {record.category}

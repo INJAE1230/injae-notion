@@ -185,6 +185,26 @@ export async function createAttendance(data: AttendanceFormData, employeeName: s
   return page.id;
 }
 
+export async function updateAttendance(id: string, data: AttendanceFormData, employeeName: string): Promise<void> {
+  const title = `${employeeName} - ${data.category}`;
+  const note = data.category === "조퇴" && data.deductionMethod
+    ? encodeDeductionMethod(data.deductionMethod, data.note)
+    : data.note;
+
+  const properties: Record<string, unknown> = {
+    "제목": { title: [{ text: { content: title } }] },
+    "직원": { relation: [{ id: data.employeeId }] },
+    "날짜": { date: { start: data.date } },
+    "구분": { select: { name: data.category } },
+    "비고": { rich_text: [{ text: { content: note || "" } }] },
+  };
+
+  await notion.pages.update({
+    page_id: id,
+    properties,
+  } as Parameters<typeof notion.pages.update>[0]);
+}
+
 export async function deleteAttendance(id: string): Promise<void> {
   await notion.pages.update({
     page_id: id,

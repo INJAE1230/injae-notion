@@ -57,6 +57,8 @@ export function HrDashboard({ initialEmployees, initialAttendance }: HrDashboard
   const [showAttendanceForm, setShowAttendanceForm] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [attendanceDeleteTarget, setAttendanceDeleteTarget] = useState<AttendanceRecord | null>(null);
+  const [editingAttendance, setEditingAttendance] = useState<AttendanceRecord | null>(null);
+  const [updatingAttendance, setUpdatingAttendance] = useState(false);
   const [search, setSearch] = useState("");
   const [attendanceView, setAttendanceView] = useState<"list" | "calendar">("calendar");
   const [calendarFormDate, setCalendarFormDate] = useState<string | null>(null);
@@ -169,6 +171,26 @@ export function HrDashboard({ initialEmployees, initialAttendance }: HrDashboard
     toast.success(`${employeeName} ${data.category} 등록 완료`);
     setShowAttendanceForm(false);
     await refreshData();
+  };
+
+  const handleUpdateAttendance = async (data: AttendanceFormData, employeeName: string) => {
+    if (!editingAttendance) return;
+    setUpdatingAttendance(true);
+    try {
+      const res = await fetch(`/api/hr/attendance/${editingAttendance.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ formData: data, employeeName }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success(`${employeeName} ${data.category} 수정 완료`);
+      setEditingAttendance(null);
+      await refreshData();
+    } catch {
+      toastError("수정에 실패했습니다");
+    } finally {
+      setUpdatingAttendance(false);
+    }
   };
 
   const bulkPreview = useMemo(() => {
@@ -442,7 +464,7 @@ export function HrDashboard({ initialEmployees, initialAttendance }: HrDashboard
                 setCalendarFormDate(date);
                 setCalendarFormEmployeeId(employeeId);
               }}
-              onDeleteClick={(record) => setAttendanceDeleteTarget(record)}
+              onRecordClick={(record) => setEditingAttendance(record)}
             />
           </CardContent>
         </Card>
@@ -484,9 +506,14 @@ export function HrDashboard({ initialEmployees, initialAttendance }: HrDashboard
                         {record.note && <span>· {record.note.replace(/^\[(연차|정휴무)차감\]\s*/, "")}</span>}
                       </div>
                     </div>
-                    <Button variant="destructive" size="sm" className="h-7 text-xs shrink-0" onClick={() => setAttendanceDeleteTarget(record)} disabled={deletingId === record.id}>
-                      {deletingId === record.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
-                    </Button>
+                    <div className="flex gap-1.5 shrink-0">
+                      <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setEditingAttendance(record)}>
+                        <Pencil className="h-3 w-3" /> 수정
+                      </Button>
+                      <Button variant="destructive" size="sm" className="h-7 text-xs" onClick={() => setAttendanceDeleteTarget(record)} disabled={deletingId === record.id}>
+                        {deletingId === record.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -594,14 +621,34 @@ export function HrDashboard({ initialEmployees, initialAttendance }: HrDashboard
           {calendarFormDate && calendarFormEmployeeId && (
             <AttendanceForm
               employees={employees}
-              initialEmployeeId={calendarFormEmployeeId}
-              initialDate={calendarFormDate}
+              initial={{ employeeId: calendarFormEmployeeId, date: calendarFormDate }}
               onSubmit={async (data, empName) => {
                 await handleCreateAttendance(data, empName);
                 setCalendarFormDate(null);
                 setCalendarFormEmployeeId(null);
               }}
               onCancel={() => { setCalendarFormDate(null); setCalendarFormEmployeeId(null); }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editingAttendance} onOpenChange={(open) => { if (!open) setEditingAttendance(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>근태 수정</DialogTitle></DialogHeader>
+          {editingAttendance && (
+            <AttendanceForm
+              employees={employees}
+              initial={{ ...editingAttendance, employeeId: editingAttendance.employeeId || undefined }}
+              submitLabel="저장"
+              onSubmit={handleUpdateAttendance}
+              onCancel={() => setEditingAttendance(null)}
+              onDelete={async () => {
+                const target = editingAttendance;
+                setEditingAttendance(null);
+                if (target) setAttendanceDeleteTarget(target);
+              }}
+              deleting={updatingAttendance}
             />
           )}
         </DialogContent>
