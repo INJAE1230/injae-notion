@@ -15,19 +15,6 @@ const CELL_TO_CATEGORY: Record<string, AttendanceCategory | null> = {
   "근로자의날": "근로자의날",
 };
 
-const CATEGORY_TO_CELL: Record<string, string> = {
-  "정상근무": "정·근",
-  "정휴무": "휴무",
-  "관공휴일": "관공",
-  "연차": "연차",
-  "반차": "반차",
-  "대출": "대출",
-  "출장": "출장",
-  "조퇴": "조퇴",
-  "결근": "결근",
-  "근로자의날": "근로자의날",
-};
-
 export interface ParsedAttendanceRow {
   name: string;
   department: string;
@@ -110,79 +97,133 @@ async function parseAttendanceExcelAsync(buffer: ArrayBuffer, year: number): Pro
   return results;
 }
 
+export interface AttendanceExportEmployee {
+  name: string;
+  department: string;
+  position: string;
+  restDays: string[]; // 정휴무 요일 라벨 (예: ["토", "일"])
+  workStart: string; // "HH:MM"
+  workEnd: string; // "HH:MM"
+  dailyRecords: Record<string, { category: AttendanceCategory; note: string }>;
+}
+
+// 근태현황.xlsx 원본 양식과 맞춘 휴무성 카테고리 (출근 없이 비고에 순번만 표기)
+const LEAVE_CATEGORIES: AttendanceCategory[] = ["관공휴일", "정휴무", "연차", "반차"];
+const LEAVE_LABELS: Record<string, string> = {
+  "관공휴일": "관공휴무",
+  "정휴무": "정 휴무",
+  "연차": "연차",
+  "반차": "반차",
+};
+
+function parseHHMM(v: string): [number, number] {
+  const [h, m] = (v || "").split(":").map((n) => parseInt(n, 10));
+  return [Number.isFinite(h) ? h : 0, Number.isFinite(m) ? m : 0];
+}
+
+function setWorkTime(row: ExcelJS.Row, startH: number, startM: number, endH: number, endM: number) {
+  const inCell = row.getCell(6);
+  inCell.value = new Date(1899, 11, 30, startH, startM);
+  inCell.numFmt = "hh:mm";
+  const outCell = row.getCell(9);
+  outCell.value = new Date(1899, 11, 30, endH, endM);
+  outCell.numFmt = "hh:mm";
+}
+
+const DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
+
+// "근태현황.xlsx" 원본 양식: 직원별 시트, 하루 1행(근무일자/출퇴근/비고), 하단 카테고리별 집계
 export async function generateAttendanceExcel(
   monthStr: string,
-  sections: {
-    entity: string;
-    employees: {
-      department: string;
-      position: string;
-      name: string;
-      joinDate: string;
-      annualLeaveTotal: number;
-      dailyRecords: Record<string, string>;
-    }[];
-  }[]
+  employees: AttendanceExportEmployee[]
 ): Promise<ArrayBuffer> {
-  const [yearStr, monthNum] = monthStr.split("-");
-  const year = parseInt(yearStr);
-  const month = parseInt(monthNum);
+  const [yearStr, monthNumStr] = monthStr.split("-");
+  const year = parseInt(yearStr, 10);
+  const month = parseInt(monthNumStr, 10);
   const daysInMonth = new Date(year, month, 0).getDate();
 
   const workbook = new ExcelJS.Workbook();
-  const ws = workbook.addWorksheet(`${year}년 ${String(month).padStart(2, "0")}`);
 
-  for (const section of sections) {
-    const entityRow = ws.addRow([section.entity]);
-    entityRow.font = { bold: true };
+  for (const emp of employees) {
+    const ws = workbook.addWorksheet((emp.name || "직원").slice(0, 31));
 
-    const headerCells: (string | number | null)[] = ["구분", "", "", "", "전월 이월 현황", "", "", `${month}월 발생 휴무합`];
+    const titleRow = ws.addRow([`${year}년 ${String(month).padStart(2, "0")}월 근태현황`]);
+    ws.mergeCells(titleRow.number, 1, titleRow.number, 10);
+    titleRow.font = { bold: true, size: 13 };
+    titleRow.alignment = { horizontal: "center" };
+
+    const headerRow = ws.addRow(["사용자ID", "성 명", "부 서", "직 급", "근무일자", "출 근", "외 출", "복 귀", "퇴 근", "비 고"]);
+    headerRow.font = { bold: true };
+
+    const restSet = new Set(emp.restDays);
+    const [startH, startM] = parseHHMM(emp.workStart || "10:00");
+    const [endH, endM] = parseHHMM(emp.workEnd || "21:00");
+
+    let leaveSeq = 0;
+    const categoryCounts: Record<string, number> = {};
+
     for (let d = 1; d <= daysInMonth; d++) {
-      headerCells.push(`${month}/${d}`);
-    }
-    headerCells.push("휴일합");
-    const hRow = ws.addRow(headerCells);
-    hRow.font = { bold: true };
+      const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      const dow = new Date(year, month - 1, d).getDay();
+      const dayLabel = DAY_LABELS[dow];
+      const record = emp.dailyRecords[dateStr];
 
-    ws.addRow(["부 서", "직급", "성 명", "입사일", "연차", "미*휴", "대출"]);
+      const row = ws.addRow([
+        "",
+        d === 1 ? emp.name : "",
+        d === 1 ? emp.department : "",
+        d === 1 ? emp.position : "",
+        null, null, null, null, null, "",
+      ]);
 
-    for (const emp of section.employees) {
-      const empCells: (string | number | null)[] = [
-        emp.department,
-        emp.position,
-        emp.name,
-        emp.joinDate,
-        emp.annualLeaveTotal,
-        null,
-        null,
-        null,
-      ];
+      const dateCell = row.getCell(5);
+      dateCell.value = new Date(year, month - 1, d);
+      dateCell.numFmt = "yyyy-mm-dd";
 
-      let restCount = 0;
-      for (let d = 1; d <= daysInMonth; d++) {
-        const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-        const category = emp.dailyRecords[dateStr];
-        if (category) {
-          const cellVal = CATEGORY_TO_CELL[category] || category;
-          empCells.push(cellVal);
-          if (["정휴무", "관공휴일", "연차", "반차"].includes(category)) restCount++;
-        } else {
-          const dow = new Date(year, month - 1, d).getDay();
-          if (dow === 0 || dow === 6) {
-            empCells.push("휴무");
-            restCount++;
-          } else {
-            empCells.push("정·근");
-          }
-        }
+      const isImplicitRest = !record && (dow === 0 || dow === 6 || restSet.has(dayLabel));
+
+      if (record && LEAVE_CATEGORIES.includes(record.category)) {
+        leaveSeq++;
+        row.getCell(10).value = String(leaveSeq);
+        categoryCounts[record.category] = (categoryCounts[record.category] || 0) + 1;
+      } else if (isImplicitRest) {
+        leaveSeq++;
+        row.getCell(10).value = String(leaveSeq);
+        categoryCounts["정휴무"] = (categoryCounts["정휴무"] || 0) + 1;
+      } else if (record && record.category === "정상근무") {
+        setWorkTime(row, startH, startM, endH, endM);
+        if (record.note) row.getCell(10).value = record.note;
+      } else if (record) {
+        // 대출/출장/조퇴/결근/근로자의날: 정상 출퇴근이 아니므로 비고에 사유만 표기
+        row.getCell(10).value = record.note || record.category;
+      } else {
+        setWorkTime(row, startH, startM, endH, endM);
       }
-      empCells[7] = restCount;
-      empCells.push(restCount);
-      ws.addRow(empCells);
     }
 
     ws.addRow([]);
+
+    const totalLeave = LEAVE_CATEGORIES.reduce((s, c) => s + (categoryCounts[c] || 0), 0);
+    const summaryLines: string[] = [];
+    if (totalLeave > 0) summaryLines.push(`총휴무 ${totalLeave}회`);
+    for (const cat of LEAVE_CATEGORIES) {
+      const count = categoryCounts[cat] || 0;
+      if (count > 0) summaryLines.push(`${LEAVE_LABELS[cat]} ${count}회`);
+    }
+    for (const line of summaryLines) {
+      const r = ws.addRow(["", "", "", "", line]);
+      ws.mergeCells(r.number, 5, r.number, 7);
+      r.getCell(5).alignment = { horizontal: "center" };
+    }
+
+    ws.getColumn(1).width = 10;
+    ws.getColumn(2).width = 10;
+    ws.getColumn(3).width = 10;
+    ws.getColumn(4).width = 8;
+    ws.getColumn(5).width = 13;
+    for (let c = 6; c <= 9; c++) ws.getColumn(c).width = 9;
+    ws.getColumn(10).width = 26;
   }
 
-  return await workbook.xlsx.writeBuffer() as unknown as ArrayBuffer;
+  return (await workbook.xlsx.writeBuffer()) as unknown as ArrayBuffer;
 }

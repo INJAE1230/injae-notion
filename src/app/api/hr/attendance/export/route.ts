@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { getAllEmployees, getAllAttendance } from "@/lib/hr-service";
-import { generateAttendanceExcel } from "@/lib/excel-attendance";
-import { ENTITIES } from "@/lib/constants";
+import { generateAttendanceExcel, type AttendanceExportEmployee } from "@/lib/excel-attendance";
+
+const DEFAULT_WORK_START = "10:00";
+const DEFAULT_WORK_END = "21:00";
 
 export async function GET(request: Request) {
   try {
@@ -19,35 +21,26 @@ export async function GET(request: Request) {
     const activeEmployees = employees.filter((e) => e.status === "재직");
     const monthAttendance = attendance.filter((a) => a.date.startsWith(month));
 
-    const attendanceByEmployee = new Map<string, Record<string, string>>();
+    const attendanceByEmployee = new Map<string, Record<string, { category: typeof monthAttendance[number]["category"]; note: string }>>();
     for (const a of monthAttendance) {
       if (!a.employeeId) continue;
       if (!attendanceByEmployee.has(a.employeeId)) {
         attendanceByEmployee.set(a.employeeId, {});
       }
-      attendanceByEmployee.get(a.employeeId)![a.date] = a.category;
+      attendanceByEmployee.get(a.employeeId)![a.date] = { category: a.category, note: a.note };
     }
 
-    const entityGroups = new Map<string, typeof activeEmployees>();
-    for (const emp of activeEmployees) {
-      const entity = emp.entity || "미배정";
-      if (!entityGroups.has(entity)) entityGroups.set(entity, []);
-      entityGroups.get(entity)!.push(emp);
-    }
-
-    const sections = [...entityGroups.entries()].map(([entity, emps]) => ({
-      entity,
-      employees: emps.map((emp) => ({
-        department: emp.department,
-        position: emp.position || "",
-        name: emp.name,
-        joinDate: emp.joinDate,
-        annualLeaveTotal: emp.annualLeaveTotal,
-        dailyRecords: attendanceByEmployee.get(emp.id) || {},
-      })),
+    const exportEmployees: AttendanceExportEmployee[] = activeEmployees.map((emp) => ({
+      name: emp.name,
+      department: emp.department,
+      position: emp.position || "",
+      restDays: emp.restDays,
+      workStart: DEFAULT_WORK_START,
+      workEnd: DEFAULT_WORK_END,
+      dailyRecords: attendanceByEmployee.get(emp.id) || {},
     }));
 
-    const buf = await generateAttendanceExcel(month, sections);
+    const buf = await generateAttendanceExcel(month, exportEmployees);
     const [y, m] = month.split("-");
     const filename = encodeURIComponent(`${y}년 ${parseInt(m)}월 근태현황.xlsx`);
 
