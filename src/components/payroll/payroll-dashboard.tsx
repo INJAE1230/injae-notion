@@ -1314,7 +1314,7 @@ export function PayrollDashboard({
 
       {/* Tax Simulation Dialog */}
       <Dialog open={showTaxSim} onOpenChange={setShowTaxSim}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
