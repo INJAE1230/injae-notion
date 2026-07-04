@@ -36,6 +36,8 @@ import {
   Timer,
   Printer,
   FileText,
+  ScanSearch,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { toastError } from "@/lib/toast-utils";
@@ -152,6 +154,28 @@ function recordToFormData(r: PayrollRecord): PayrollFormData {
   };
 }
 
+// 급여명세서 OCR 결과(각 필드 nullable)를 폼 데이터에 병합.
+// 숫자는 값이 있을 때만 덮어쓰고, month/payDate/note는 비어있지 않을 때만 반영.
+type PayslipOcr = Partial<Record<keyof PayrollFormData, number | string | null>>;
+function mergeOcrIntoForm(prev: PayrollFormData, ocr: PayslipOcr): PayrollFormData {
+  const next = { ...prev };
+  const numKeys: (keyof PayrollFormData)[] = [
+    "basePay", "overtimePay", "overtimeHours", "holidayPay", "nightPay",
+    "annualLeavePay", "positionPay", "mealAllowance", "vehicleAllowance", "otherPay",
+    "incomeTax", "residentTax", "healthInsurance", "longTermCare", "nationalPension",
+    "employmentInsurance", "yearEndSettlement", "otherDeduction",
+    "totalWorkHours", "workDays", "hourlyWage",
+  ];
+  for (const k of numKeys) {
+    const v = ocr[k];
+    if (typeof v === "number" && !isNaN(v)) (next[k] as number) = v;
+  }
+  if (typeof ocr.month === "string" && /^\d{4}-\d{2}$/.test(ocr.month)) next.month = ocr.month;
+  if (typeof ocr.payDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(ocr.payDate)) next.payDate = ocr.payDate;
+  if (typeof ocr.note === "string" && ocr.note.trim()) next.note = ocr.note.trim();
+  return next;
+}
+
 function calcSimpleTax(annual: number): number {
   const taxBrackets = [
     { limit: 14_000_000, rate: 0.06, deduction: 0 },
@@ -182,7 +206,42 @@ export function PayrollDashboard({
   const [selectedYear, setSelectedYear] = useState<string>("all");
   const [printRecord, setPrintRecord] = useState<PayrollRecord | null>(null);
   const [showTaxSim, setShowTaxSim] = useState(false);
+  const [ocrLoading, setOcrLoading] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
+  const ocrInputRef = useRef<HTMLInputElement>(null);
+
+  const handleOcrUpload = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("이미지 파일만 인식할 수 있습니다");
+      return;
+    }
+    setOcrLoading(true);
+    try {
+      // 1) 이미지 업로드 → URL 확보
+      const fd = new FormData();
+      fd.append("file", file);
+      const upRes = await fetch("/api/upload", { method: "POST", body: fd });
+      const upData = await upRes.json();
+      if (!upRes.ok) throw new Error(upData.error || "이미지 업로드 실패");
+
+      // 2) URL로 급여명세서 인식
+      const ocrRes = await fetch("/api/payroll/ocr", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl: upData.url }),
+      });
+      const ocrData = await ocrRes.json();
+      if (!ocrRes.ok) throw new Error(ocrData.error || "인식 실패");
+
+      setFormData((prev) => mergeOcrIntoForm(prev, ocrData));
+      toast.success("급여명세서를 인식했습니다. 값을 확인 후 저장하세요");
+    } catch (err) {
+      toastError(err instanceof Error ? err.message : "인식에 실패했습니다");
+    } finally {
+      setOcrLoading(false);
+      if (ocrInputRef.current) ocrInputRef.current.value = "";
+    }
+  };
 
   const allYears = useMemo(() => {
     const years = new Set(records.map((r) => r.month.substring(0, 4)));
@@ -1089,6 +1148,43 @@ export function PayrollDashboard({
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* 급여명세서 이미지 자동 인식 */}
+            <input
+              ref={ocrInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleOcrUpload(f);
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => !ocrLoading && ocrInputRef.current?.click()}
+              disabled={ocrLoading}
+              className={`flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-3 text-sm transition-all ${
+                ocrLoading
+                  ? "cursor-not-allowed opacity-70"
+                  : "border-border hover:border-violet-300 hover:bg-accent/30"
+              }`}
+            >
+              {ocrLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin text-violet-500" />
+                  <span className="text-muted-foreground">명세서 인식 중...</span>
+                </>
+              ) : (
+                <>
+                  <ScanSearch className="h-4 w-4 text-violet-500" />
+                  <span className="font-medium">급여명세서 이미지로 자동 입력</span>
+                </>
+              )}
+            </button>
+            <p className="text-[11px] text-muted-foreground -mt-2">
+              명세서 사진을 올리면 항목을 자동으로 읽어 채웁니다. 인식 후 값을 꼭 확인하세요.
+            </p>
+
             <div className="grid grid-cols-2 gap-3">
               <FormField
                 label="귀속월"
