@@ -26,9 +26,10 @@ interface EmployeeFormProps {
   onSubmit: (data: EmployeeFormData) => Promise<void>;
   onCancel: () => void;
   submitLabel?: string;
+  usedLeave?: number;
 }
 
-export function EmployeeForm({ initial, onSubmit, onCancel, submitLabel = "등록" }: EmployeeFormProps) {
+export function EmployeeForm({ initial, onSubmit, onCancel, submitLabel = "등록", usedLeave = 0 }: EmployeeFormProps) {
   const now = new Date();
   const defaultJoinDate = initial?.joinDate || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const [form, setForm] = useState<EmployeeFormData>({
@@ -174,6 +175,24 @@ export function EmployeeForm({ initial, onSubmit, onCancel, submitLabel = "등�
             </button>
           )}
         </div>
+      </div>
+
+      <div>
+        <label className="text-xs font-medium">남은연차</label>
+        <Input
+          type="number"
+          step={0.5}
+          value={form.annualLeaveTotal - usedLeave}
+          onChange={(e) => {
+            setManualLeave(true);
+            setForm({ ...form, annualLeaveTotal: (parseFloat(e.target.value) || 0) + usedLeave });
+          }}
+        />
+        <p className="text-[11px] text-muted-foreground mt-1">
+          {usedLeave > 0
+            ? `발생 ${form.annualLeaveTotal}일 − 근태상 사용 ${usedLeave}일. 직접 고치면 발생일수가 자동 보정됩니다.`
+            : "직접 입력하면 연차발생일수가 자동으로 맞춰집니다."}
+        </p>
       </div>
 
       <div>

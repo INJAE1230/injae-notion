@@ -102,6 +102,15 @@ export function HrDashboard({ initialEmployees, initialAttendance }: HrDashboard
     });
   }, [activeEmployees, attendance]);
 
+  // 전 직원(퇴사 포함) 근태상 연차 사용량 — 목록/편집의 실시간 남은연차 계산에 사용
+  const usedLeaveByEmp = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const emp of employees) {
+      map.set(emp.id, calculateUsedLeave(attendance.filter((a) => a.employeeId === emp.id)));
+    }
+    return map;
+  }, [employees, attendance]);
+
   const summaryCards = [
     { title: "재직 인원", value: activeEmployees.length, icon: UserCheck, color: "text-green-500", suffix: "명" },
     { title: "퇴사", value: employees.length - activeEmployees.length, icon: UserX, color: "text-gray-400", suffix: "명" },
@@ -433,7 +442,7 @@ export function HrDashboard({ initialEmployees, initialAttendance }: HrDashboard
                         {emp.entity && <span>{emp.entity}</span>}
                         {emp.department && <span>· {emp.department}</span>}
                         {emp.joinDate && <span>· 입사 {emp.joinDate}</span>}
-                        <span>· 연차 {emp.remainingLeave}/{emp.annualLeaveTotal}일</span>
+                        <span>· 연차 {emp.annualLeaveTotal - (usedLeaveByEmp.get(emp.id) ?? 0)}/{emp.annualLeaveTotal}일</span>
                         {emp.restDays.length > 0 && <span>· 휴무 {emp.restDays.join("·")}</span>}
                       </div>
                     </div>
@@ -600,6 +609,7 @@ export function HrDashboard({ initialEmployees, initialAttendance }: HrDashboard
           {editingEmployee && (
             <EmployeeForm
               initial={editingEmployee}
+              usedLeave={usedLeaveByEmp.get(editingEmployee.id) ?? 0}
               onSubmit={handleUpdateEmployee}
               onCancel={() => setEditingEmployee(null)}
               submitLabel="저장"
