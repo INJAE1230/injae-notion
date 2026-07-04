@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { ATTENDANCE_CATEGORY_COLORS } from "@/lib/hr-types";
+import { getHoliday } from "@/lib/holidays";
 import type { Employee, AttendanceRecord, AttendanceCategory } from "@/lib/hr-types";
 
 const DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -151,6 +152,7 @@ export function AttendanceCalendar({
           const isWeekend = day.dayOfWeek === 0 || day.dayOfWeek === 6;
           const isToday = day.date === todayStr;
           const isPast = day.date <= todayStr;
+          const holiday = getHoliday(day.date);
 
           let cellContent: React.ReactNode = null;
           let cellBg = "";
@@ -168,6 +170,9 @@ export function AttendanceCalendar({
                 </Badge>
               </button>
             );
+          } else if (holiday) {
+            cellContent = <span className="text-[9px] leading-tight text-red-500 font-medium">{holiday}</span>;
+            cellBg = "bg-red-50 dark:bg-red-950/20";
           } else if (isWeekend) {
             cellContent = <span className="text-[10px] text-muted-foreground/40">휴일</span>;
             cellBg = "bg-accent/30";
@@ -195,7 +200,7 @@ export function AttendanceCalendar({
               }}
             >
               <div className={`text-[11px] font-medium ${
-                day.dayOfWeek === 0 ? "text-red-400" : day.dayOfWeek === 6 ? "text-blue-400" : ""
+                holiday || day.dayOfWeek === 0 ? "text-red-400" : day.dayOfWeek === 6 ? "text-blue-400" : ""
               }`}>
                 {day.day}
               </div>
@@ -209,6 +214,7 @@ export function AttendanceCalendar({
       </div>
 
       <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-red-50 dark:bg-red-950/40 border" /> 공휴일</span>
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-teal-50 dark:bg-teal-950/40 border" /> 정휴무</span>
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-accent/30 border" /> 주말</span>
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded ring-1 ring-teal-500" /> 오늘</span>

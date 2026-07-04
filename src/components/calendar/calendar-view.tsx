@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { STATUS_COLORS, PROJECT_COLORS } from "@/lib/constants";
+import { getHoliday } from "@/lib/holidays";
 import type { WorkLog } from "@/lib/types";
 
 interface CalendarViewProps {
@@ -112,22 +113,28 @@ export function CalendarView({ logs }: CalendarViewProps) {
               const isSelected = dateStr === selectedDate;
               const dayOfWeek = (firstDay + day - 1) % 7;
               const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+              const holiday = getHoliday(dateStr);
 
               return (
                 <div
                   key={dateStr}
                   className={`min-h-[60px] sm:min-h-[80px] border-t p-1 cursor-pointer transition-colors ${
-                    isSelected ? "bg-primary/10" : isWeekend ? "bg-muted/30 hover:bg-muted/50" : "hover:bg-muted/50"
+                    isSelected ? "bg-primary/10" : holiday ? "bg-red-50/60 dark:bg-red-950/20 hover:bg-red-50" : isWeekend ? "bg-muted/30 hover:bg-muted/50" : "hover:bg-muted/50"
                   }`}
                   onClick={() => setSelectedDate(dateStr)}
                 >
                   <div className={`text-xs sm:text-sm mb-0.5 ${
                     isToday
                       ? "inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold"
-                      : dayOfWeek === 0 ? "text-red-500" : dayOfWeek === 6 ? "text-blue-500" : ""
+                      : holiday || dayOfWeek === 0 ? "text-red-500" : dayOfWeek === 6 ? "text-blue-500" : ""
                   }`}>
                     {day}
                   </div>
+                  {holiday && (
+                    <div className="text-[9px] leading-tight text-red-500 font-medium truncate hidden sm:block">
+                      {holiday}
+                    </div>
+                  )}
                   <div className="space-y-0.5 hidden sm:block">
                     {dayLogs.slice(0, 3).map((log) => (
                       <div
