@@ -16,10 +16,10 @@ import {
 import { toast } from "sonner";
 import { toastError } from "@/lib/toast-utils";
 import { ChevronDown } from "lucide-react";
-import { PROJECTS, STATUSES, PRIORITIES, TAGS, TAG_COLORS, PRIORITY_COLORS, PROJECT_COLORS, ACHIEVEMENT_RATINGS } from "@/lib/constants";
+import { PROJECTS, STATUSES, PRIORITIES, PRIORITY_COLORS, PROJECT_COLORS, ACHIEVEMENT_RATINGS } from "@/lib/constants";
 import { FileUpload } from "@/components/file-upload";
 import type { OcrResult } from "@/components/file-upload";
-import type { WorkLog, WorkLogFormData, Tag, Priority, AchievementRating, Project, Track } from "@/lib/types";
+import type { WorkLog, WorkLogFormData, Priority, AchievementRating, Project, Track } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 function getToday() {
@@ -87,15 +87,6 @@ export function LogForm({ log, initialDate, initialTrackId, onSuccess }: { log?:
       projects: prev.projects.includes(proj)
         ? prev.projects.filter((p) => p !== proj)
         : [...prev.projects, proj],
-    }));
-  };
-
-  const toggleTag = (tag: Tag) => {
-    setForm((prev) => ({
-      ...prev,
-      tags: prev.tags.includes(tag)
-        ? prev.tags.filter((t) => t !== tag)
-        : [...prev.tags, tag],
     }));
   };
 
@@ -231,24 +222,6 @@ export function LogForm({ log, initialDate, initialTrackId, onSuccess }: { log?:
           placeholder="업무 내용을 입력하세요"
           rows={4}
         />
-      </div>
-
-      <div className="space-y-2">
-        <label className="text-sm font-medium">태그</label>
-        <div className="flex flex-wrap gap-2">
-          {TAGS.map((tag) => (
-            <Badge
-              key={tag}
-              variant="outline"
-              className={`cursor-pointer select-none ${
-                form.tags.includes(tag) ? TAG_COLORS[tag] : ""
-              }`}
-              onClick={() => toggleTag(tag)}
-            >
-              {tag}
-            </Badge>
-          ))}
-        </div>
       </div>
 
       {/* 상세 옵션 토글 */}

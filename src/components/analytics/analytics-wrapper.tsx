@@ -9,12 +9,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { TimeAllocationChart } from "./time-allocation-chart";
 import { CompletionTrendChart } from "./completion-trend-chart";
 import { ProductivityHeatmap } from "./productivity-heatmap";
-import { TagDistributionChart } from "./tag-distribution-chart";
 import {
   computeTimeAllocation,
   computeCompletionTrend,
   computeProductivityPatterns,
-  computeTagDistribution,
   computePeriodComparison,
 } from "@/lib/analytics";
 import type { WorkLog } from "@/lib/types";
@@ -69,7 +67,6 @@ export function AnalyticsWrapper({ allLogs }: { allLogs: WorkLog[] }) {
   const timeAllocation = computeTimeAllocation(filteredLogs);
   const completionTrend = computeCompletionTrend(filteredLogs);
   const patterns = computeProductivityPatterns(filteredLogs);
-  const tagDist = computeTagDistribution(filteredLogs);
   const comparison = computePeriodComparison(thisWeekLogs, lastWeekLogs);
 
   const applyPreset = (idx: number) => {
@@ -155,10 +152,7 @@ export function AnalyticsWrapper({ allLogs }: { allLogs: WorkLog[] }) {
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <TimeAllocationChart data={timeAllocation} />
-        <TagDistributionChart data={tagDist} />
-      </div>
+      <TimeAllocationChart data={timeAllocation} />
 
       <CompletionTrendChart data={completionTrend} />
       <ProductivityHeatmap data={patterns} />

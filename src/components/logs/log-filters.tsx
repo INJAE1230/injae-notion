@@ -13,8 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { X, SlidersHorizontal, ChevronDown, ChevronUp, Layers } from "lucide-react";
-import { PROJECTS, STATUSES, PRIORITIES, TAGS, TAG_COLORS } from "@/lib/constants";
-import type { Tag } from "@/lib/types";
+import { PROJECTS, STATUSES, PRIORITIES } from "@/lib/constants";
 
 export function LogFilters() {
   const router = useRouter();
@@ -34,18 +33,6 @@ export function LogFilters() {
       router.push(`/logs?${params.toString()}`);
     },
     [router, searchParams]
-  );
-
-  const currentTags = searchParams.get("tags")?.split(",").filter(Boolean) || [];
-
-  const toggleTag = useCallback(
-    (tag: Tag) => {
-      const next = currentTags.includes(tag)
-        ? currentTags.filter((t) => t !== tag)
-        : [...currentTags, tag];
-      updateParam("tags", next.length > 0 ? next.join(",") : null);
-    },
-    [currentTags, updateParam]
   );
 
   const debouncedSearch = useCallback(
@@ -212,18 +199,6 @@ export function LogFilters() {
         </div>
 
         <div className="flex flex-wrap gap-2 items-center">
-          {TAGS.map((tag) => (
-            <Badge
-              key={tag}
-              variant="outline"
-              className={`cursor-pointer select-none h-8 text-sm ${
-                currentTags.includes(tag) ? TAG_COLORS[tag] : ""
-              }`}
-              onClick={() => toggleTag(tag)}
-            >
-              {tag}
-            </Badge>
-          ))}
           <button
             onClick={() => updateParam("hideTrack", hideTrack ? null : "1")}
             className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-full border text-sm transition-colors select-none ${

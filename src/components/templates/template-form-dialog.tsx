@@ -24,8 +24,6 @@ import { toastError } from "@/lib/toast-utils";
 import {
   PROJECTS,
   STATUSES,
-  TAGS,
-  TAG_COLORS,
   PROJECT_COLORS,
   FREQUENCIES,
   DAY_OF_WEEK_LABELS,
@@ -33,7 +31,6 @@ import {
 import type {
   RecurringTemplate,
   RecurringTemplateFormData,
-  Tag,
   Frequency,
   Project,
 } from "@/lib/types";
@@ -72,15 +69,6 @@ export function TemplateFormDialog({
       defaultProjects: prev.defaultProjects.includes(proj)
         ? prev.defaultProjects.filter((p) => p !== proj)
         : [...prev.defaultProjects, proj],
-    }));
-  };
-
-  const toggleTag = (tag: Tag) => {
-    setForm((prev) => ({
-      ...prev,
-      defaultTags: prev.defaultTags.includes(tag)
-        ? prev.defaultTags.filter((t) => t !== tag)
-        : [...prev.defaultTags, tag],
     }));
   };
 
@@ -359,24 +347,6 @@ export function TemplateFormDialog({
                 ))}
               </SelectContent>
             </Select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">태그</label>
-            <div className="flex flex-wrap gap-2">
-              {TAGS.map((tag) => (
-                <Badge
-                  key={tag}
-                  variant="outline"
-                  className={`cursor-pointer select-none ${
-                    form.defaultTags.includes(tag) ? TAG_COLORS[tag] : ""
-                  }`}
-                  onClick={() => toggleTag(tag)}
-                >
-                  {tag}
-                </Badge>
-              ))}
-            </div>
           </div>
 
           <div className="space-y-2">
