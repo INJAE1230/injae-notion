@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -50,12 +49,20 @@ import {
   YAxis,
   CartesianGrid,
 } from "recharts";
-import { ENTITIES, TRACK_STATUSES, TRACK_STATUS_COLORS, PROJECT_COLORS, STATUS_COLORS, MEMO_CHUNK_SIZE } from "@/lib/constants";
+import { TRACK_STATUS_COLORS, PROJECT_COLORS, STATUS_COLORS, MEMO_CHUNK_SIZE } from "@/lib/constants";
 import type { Track, TrackFormData, WorkLog, TrackStatus, WorkLogFormData } from "@/lib/types";
 import { LogForm } from "@/components/logs/log-form";
 import { MemoPreview } from "@/components/memo/memo-preview";
 import { TrackFiles } from "@/components/tracks/track-files";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { TrackFormModal } from "@/components/tracks/track-form-modal";
+import {
+  ENTITY_COLORS,
+  STATUS_CHART_COLORS,
+  TOOLTIP_STYLE,
+  getDday,
+  emptyForm,
+} from "@/components/tracks/track-utils";
 
 interface TrackBoardProps {
   tracks: Track[];
@@ -63,47 +70,6 @@ interface TrackBoardProps {
   initialTrackId?: string;
 }
 
-const ENTITY_COLORS: Record<string, string> = {
-  "청초수": "#3b82f6",
-  "청초수씨푸드": "#06b6d4",
-  "646미터퍼세크": "#f59e0b",
-  "아일랜드프로젝트646미터퍼세크": "#22c55e",
-  "JS코퍼레이션": "#8b5cf6",
-  "JKK인터내셔널": "#6366f1",
-  "에그롤린대전": "#f97316",
-  "바비캐럿": "#ec4899",
-  "이니셜뮤직코리아": "#14b8a6",
-};
-
-const STATUS_CHART_COLORS: Record<string, string> = {
-  "진행 중": "#6366f1",
-  "대기중": "#fb923c",
-  "예정": "#eab308",
-  "언젠가": "#94a3b8",
-  "완료": "#22c55e",
-};
-
-const TOOLTIP_STYLE = {
-  borderRadius: "10px",
-  border: "1px solid var(--border)",
-  background: "var(--background)",
-  fontSize: "12px",
-};
-
-function getDday(targetDate: string | null): { label: string; urgent: boolean } {
-  if (!targetDate) return { label: "기한 없음", urgent: false };
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const target = new Date(targetDate + "T00:00:00");
-  const diff = Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-  if (diff < 0) return { label: `D+${Math.abs(diff)}`, urgent: true };
-  if (diff === 0) return { label: "D-day", urgent: true };
-  return { label: `D-${diff}`, urgent: diff <= 7 };
-}
-
-function emptyForm(): TrackFormData {
-  return { title: "", entity: null, startDate: null, targetDate: null, status: "계획", description: null };
-}
 
 export function TrackBoard({ tracks: initialTracks, allLogs, initialTrackId }: TrackBoardProps) {
   const router = useRouter();
@@ -965,95 +931,3 @@ export function TrackBoard({ tracks: initialTracks, allLogs, initialTrackId }: T
   );
 }
 
-function TrackFormModal({
-  form,
-  setForm,
-  saving,
-  onSave,
-  onClose,
-  isEdit,
-}: {
-  form: TrackFormData;
-  setForm: React.Dispatch<React.SetStateAction<TrackFormData>>;
-  saving: boolean;
-  onSave: () => void;
-  onClose: () => void;
-  isEdit: boolean;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-background rounded-xl shadow-2xl w-full max-w-md border">
-        <div className="flex items-center justify-between px-5 py-4 border-b">
-          <h2 className="text-sm font-semibold">{isEdit ? "트랙 수정" : "새 트랙 만들기"}</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="p-5 space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium">트랙명 *</label>
-            <Input
-              placeholder="예: 일본 법인 설립"
-              value={form.title}
-              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium">법인</label>
-              <Select value={form.entity || "__none__"} onValueChange={(v) => setForm((f) => ({ ...f, entity: v === "__none__" ? null : v }))}>
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue placeholder="선택" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">없음</SelectItem>
-                  {ENTITIES.map((e) => <SelectItem key={e} value={e}>{e}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium">상태</label>
-              <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v as TrackStatus }))}>
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TRACK_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium">시작일</label>
-              <Input type="date" value={form.startDate || ""} onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value || null }))} className="h-9 text-sm" />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium">목표완료일</label>
-              <Input type="date" value={form.targetDate || ""} onChange={(e) => setForm((f) => ({ ...f, targetDate: e.target.value || null }))} className="h-9 text-sm" />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium">설명</label>
-            <Textarea
-              placeholder="트랙에 대한 간략한 설명"
-              value={form.description || ""}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value || null }))}
-              rows={3}
-              className="text-sm resize-none"
-            />
-          </div>
-        </div>
-        <div className="flex gap-2 px-5 pb-5">
-          <Button variant="outline" className="flex-1" onClick={onClose}>취소</Button>
-          <Button className="flex-1" onClick={onSave} disabled={saving}>
-            {saving ? "저장 중..." : isEdit ? "수정" : "만들기"}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
