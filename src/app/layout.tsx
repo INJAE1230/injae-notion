@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { DesktopSidebar, MobileHeader } from "@/components/layout/sidebar";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { CommandPalette } from "@/components/layout/command-palette";
+import { AiAssistant } from "@/components/layout/ai-assistant";
 import "./globals.css";
 
 const notoSansKR = Noto_Sans_KR({
@@ -54,6 +55,7 @@ export default async function RootLayout({
                 <MobileBottomNav />
               </div>
               <CommandPalette />
+              <AiAssistant />
             </div>
           ) : (
             children
