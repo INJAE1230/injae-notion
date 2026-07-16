@@ -1,6 +1,7 @@
 import { notion, templateDatabaseId } from "./notion";
 import { queryAllPages, type NotionPage } from "./notion-helpers";
 import { createWorkLog, queryWorkLogs } from "./notion-service";
+import { getKSTNow, formatDate } from "./date-utils";
 import type {
   RecurringTemplate,
   RecurringTemplateFormData,
@@ -144,8 +145,6 @@ export async function deleteTemplate(pageId: string): Promise<void> {
     in_trash: true,
   } as Parameters<typeof notion.pages.update>[0]);
 }
-
-import { getKSTNow, formatDate } from "./date-utils";
 
 function getISOWeekNumber(date: Date): number {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));

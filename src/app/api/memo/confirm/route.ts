@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createWorkLog, queryWorkLogs, getWorkLog, updateWorkLog } from "@/lib/notion-service";
+import { workLogFormSchema, validateBody } from "@/lib/validations";
 import type { WorkLogFormData, InputSource } from "@/lib/types";
 
 async function findMatchingLog(keyword: string) {
@@ -21,6 +22,13 @@ export async function POST(request: Request) {
         { error: "저장할 업무가 없습니다." },
         { status: 400 }
       );
+    }
+
+    for (const entry of entries) {
+      const parsed = validateBody(workLogFormSchema, entry);
+      if (!parsed.success) {
+        return NextResponse.json({ error: parsed.error }, { status: 400 });
+      }
     }
 
     const results: string[] = [];

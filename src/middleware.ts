@@ -18,7 +18,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (pathname === "/api/cron/generate") {
+  if (pathname === "/api/cron/generate" || pathname === "/api/cron/leave-recalc") {
     return NextResponse.next();
   }
 

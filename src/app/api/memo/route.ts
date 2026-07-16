@@ -93,6 +93,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (text.length > 100_000) {
+      return NextResponse.json(
+        { error: "메모가 너무 깁니다 (최대 10만자)." },
+        { status: 400 }
+      );
+    }
+
     const today = getKSTToday();
     const trimmed = prefilterKakaoExport(text.trim());
 

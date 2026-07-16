@@ -45,7 +45,7 @@ export const trackFormSchema = z.object({
 
 export const trackPatchSchema = trackFormSchema.partial();
 
-const frequencies = ["매주", "매월", "매분기"] as const;
+const frequencies = ["매일", "매주", "격주", "매월", "매월N번째요일", "매분기", "반기", "매년"] as const;
 
 export const templateFormSchema = z.object({
   name: z.string().min(1, "템플릿명은 필수입니다"),
@@ -65,27 +65,27 @@ export const templatePatchSchema = templateFormSchema.partial();
 export const payrollFormSchema = z.object({
   month: z.string().regex(/^\d{4}-\d{2}$/, "월 형식이 올바르지 않습니다"),
   payDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  basePay: z.number(),
-  overtimePay: z.number(),
-  overtimeHours: z.number(),
-  holidayPay: z.number(),
-  nightPay: z.number(),
-  annualLeavePay: z.number(),
-  positionPay: z.number(),
-  mealAllowance: z.number(),
-  vehicleAllowance: z.number(),
-  otherPay: z.number(),
-  incomeTax: z.number(),
-  residentTax: z.number(),
-  healthInsurance: z.number(),
-  longTermCare: z.number(),
-  nationalPension: z.number(),
-  employmentInsurance: z.number(),
+  basePay: z.number().min(0),
+  overtimePay: z.number().min(0),
+  overtimeHours: z.number().min(0),
+  holidayPay: z.number().min(0),
+  nightPay: z.number().min(0),
+  annualLeavePay: z.number().min(0),
   yearEndSettlement: z.number(),
-  otherDeduction: z.number(),
-  totalWorkHours: z.number(),
-  workDays: z.number(),
-  hourlyWage: z.number(),
+  positionPay: z.number().min(0),
+  mealAllowance: z.number().min(0),
+  vehicleAllowance: z.number().min(0),
+  otherPay: z.number().min(0),
+  incomeTax: z.number().min(0),
+  residentTax: z.number().min(0),
+  healthInsurance: z.number().min(0),
+  longTermCare: z.number().min(0),
+  nationalPension: z.number().min(0),
+  employmentInsurance: z.number().min(0),
+  otherDeduction: z.number().min(0),
+  totalWorkHours: z.number().min(0),
+  workDays: z.number().min(0),
+  hourlyWage: z.number().min(0),
   note: z.string(),
 });
 
