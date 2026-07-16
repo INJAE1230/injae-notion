@@ -1,7 +1,9 @@
 import { generateObject, generateText } from "ai";
 import { z } from "zod";
 import { model, modelPro } from "./ai";
-import type { Track, WorkLog } from "./types";
+import { splitIntoChunks } from "./memo-chunk";
+import { mergeEntries } from "./entry-merge";
+import type { Track, WorkLog, WorkLogFormData } from "./types";
 
 export async function generateTrackSummary(
   track: Track,
@@ -184,9 +186,15 @@ const workLogSchema = z.object({
   ),
 });
 
-export async function parseMemoText(text: string, today: string) {
+export async function parseMemoText(
+  text: string,
+  today: string,
+  // 그룹 모드는 이 함수가 유일한 상세 추출 지점이라 더 강한 모델을 넘겨받는다.
+  // 여기서 놓친 정보는 뒤 단계에서 복구할 방법이 없다.
+  opts?: { model?: typeof model }
+) {
   const { object } = await generateObject({
-    model,
+    model: opts?.model ?? model,
     // 구조화 추출은 일관성이 중요하므로 temperature를 낮춤
     temperature: 0.2,
     schema: workLogSchema,
@@ -580,85 +588,194 @@ ${text}`,
   return object.entries;
 }
 
-export async function parseMemoTextGrouped(text: string, today: string) {
+export async function parseMemoTextGrouped(
+  text: string,
+  today: string
+): Promise<WorkLogFormData[]> {
+  // MAP: 청크별로 상세 추출. 예전에는 3만자를 통째로 한 번에 넣고 클러스터링과
+  // 상세추출을 동시에 시켰는데, 정보량이 너무 많아 모델이 세부사항을 버렸다
+  // (금액·서류·담당자 등이 "법인 통장 개설 및 행정 업무 처리"로 뭉개짐).
+  // 비그룹 모드와 동일한 청크 단위로 먼저 남김없이 뽑아낸다.
+  // MAP은 기본 모델(mini)로 병렬 처리한다. modelPro로 올리면 추출이 조금 더
+  // 촘촘해지지만, 현재 계정의 gpt-4o TPM 한도(분당 3만 토큰)에 청크 병렬 호출이
+  // 바로 걸려 429가 난다. 실측상 정보 유실의 원인은 모델 성능이 아니라 청크
+  // 분할이 없던 것이었고, mini로도 금액·서류·담당자까지 살아남는다.
+  const chunks = splitIntoChunks(text);
+  const perChunk = await Promise.all(chunks.map((c) => parseMemoText(c, today)));
+  const entries = perChunk.flat() as WorkLogFormData[];
+
+  if (entries.length === 0) return [];
+  // 이미 그룹 개수 이하면 병합할 이유가 없다
+  if (entries.length <= MAX_GROUPS) return entries;
+
+  // REDUCE: 그룹 배정만 모델에게 맡기고, 실제 병합은 코드가 한다.
+  // 모델에게 content를 다시 쓰게 하면 또 요약해버리므로 구조적으로 차단.
+  const groups = await assignGroups(entries);
+  const buckets = normalizeAssignment(entries, groups);
+
+  // 1차에서 모델이 빠뜨린 항목은 "기타"로 흘려보내지 말고 한 번 더 배정을 시도한다.
+  // (긴 index 목록을 주면 모델이 일부를 누락하는 경향이 있음)
+  const orphans = findOrphans(entries, buckets);
+  if (orphans.length > 0) {
+    const titles = buckets.map((b) => b.title);
+    try {
+      const retry = await assignOrphans(entries, orphans, titles);
+      for (const { index, groupTitle } of retry) {
+        const bucket = buckets.find((b) => b.title === groupTitle);
+        if (bucket && !isTaken(buckets, index)) bucket.indexes.push(index);
+      }
+    } catch (error) {
+      console.error("누락 항목 재배정 실패, 기타로 처리:", error);
+    }
+  }
+
+  return buildEntries(entries, buckets);
+}
+
+const MAX_GROUPS = 7;
+
+const groupingSchema = z.object({
+  groups: z
+    .array(
+      z.object({
+        title: z.string().describe('"법인명 + 주제" 형식의 그룹 제목 (예: "청초수 발주·재고")'),
+        memberIndexes: z
+          .array(z.number().int())
+          .describe("이 그룹에 속하는 항목의 index 번호 배열"),
+      })
+    )
+    .describe("5~7개 그룹"),
+});
+
+/** 각 항목을 어느 그룹에 넣을지만 판단한다 (내용은 건드리지 않음) */
+async function assignGroups(entries: WorkLogFormData[]) {
+  // 클러스터링 판단에는 제목·사업장·날짜면 충분하다. content 전문을 넣으면
+  // 입력만 커지고 이득이 없어 앞부분만 힌트로 준다 — 병합은 어차피 원본으로 한다.
+  const summary = entries
+    .map((e, i) => {
+      const hint = e.content.replace(/\s+/g, " ").slice(0, 150);
+      return `[${i}] ${e.title} | 사업장: ${e.projects.join(",") || "없음"} | ${e.date}\n    ${hint}`;
+    })
+    .join("\n");
+
   const { object } = await generateObject({
-    // 긴 대화(3만자+)를 한 번에 클러스터링+상세추출해야 하므로 고성능 모델 사용
     model: modelPro,
-    // 구조화 추출은 일관성이 중요하므로 temperature를 낮춤
     temperature: 0.2,
-    // 5~7개 그룹에 상세 항목을 모두 담으면 출력이 길어져 기본 한도로는 잘릴 수 있음
-    maxOutputTokens: 16000,
-    schema: workLogSchema,
-    prompt: `당신은 대용량 업무 대화를 분석하는 클러스터링 전문가입니다.
-주어진 대화에서 업무를 추출하되, 주제·법인·이슈별로 그룹화하여 5~7개의 상위 업무(Parent Task)로 압축하세요.
-절대로 7개를 초과해서 생성하지 마세요.
+    schema: groupingSchema,
+    prompt: `아래는 업무 대화에서 추출한 업무 항목 목록입니다.
+이 항목들을 주제·법인·이슈별로 묶어 5~${MAX_GROUPS}개의 상위 그룹으로 분류하세요.
 
-중요: "상위 업무 개수를 5~7개로 압축"하라는 것이지, 각 업무의 세부 내용(content)을 압축하라는
-뜻이 아닙니다. 그룹 개수만 줄이고, 각 그룹 안의 content는 아래 3번 규칙에 따라 최대한 상세하게
-작성하세요.
+분류 기준 (우선순위 순)
+1. 법인/사업장: 같은 법인 업무끼리 묶음 (청초수, 씨푸드, JS코퍼 등)
+2. 주제/프로젝트: 동일 프로젝트·이슈 묶음 (발주, 세금계산서, 바이어 미팅 등)
+3. 위 기준으로 묶기 어려우면 시기별로 묶음
 
-오늘 날짜: ${today}
+규칙
+- 모든 index를 빠짐없이 어느 한 그룹에 배정하세요. 누락 금지.
+- 같은 index를 두 그룹에 넣지 마세요.
+- 그룹은 최대 ${MAX_GROUPS}개를 넘지 마세요.
+- title은 그룹 내용을 대표하는 "법인명 + 주제" 형식으로 지으세요.
 
-━━━━━━━━━━━━━━━━━━
-클러스터링 규칙
-━━━━━━━━━━━━━━━━━━
-
-1. 그룹화 기준 (우선순위 순)
-   - 법인/사업장: 같은 법인 업무끼리 묶음 (청초수, 씨푸드, JS코퍼 등)
-   - 주제/프로젝트: 동일 프로젝트·이슈 묶음 (발주, 세금계산서, 바이어 미팅 등)
-   - 시간대: 위 두 기준으로 묶기 어려우면 이번 주 / 다음 주 단위로 묶음
-
-2. 출력 형식 (entries 배열, 최대 7개)
-   - title: "법인명 + 주제" 형식 (예: "청초수 발주·재고", "JS코퍼 세금 처리", "바이어 대응")
-   - date: 그룹 내 가장 최근 날짜 (YYYY-MM-DD)
-   - status: 그룹 내 가장 시급한 상태 (진행 중 > 대기중 > 예정 > 언젠가 > 완료)
-   - priority: 그룹 내 가장 높은 우선순위 (없으면 null)
-   - hours: 그룹 내 시간 합산 (언급 없으면 null)
-   - projects: 그룹에 해당하는 사업장 (다중 가능)
-   - tags: 그룹 내 등장한 태그 전체
-   - link: 그룹 내 링크 URL (없으면 null)
-   - appendTo: null (그룹 파싱은 항상 새 업무 생성)
-
-3. content 필드 — 세부 항목 (아래 포맷 엄수, 정보 유실 절대 금지)
-   절대로 내용을 뭉뚱그려 요약하지 마세요. 원본 대화에 등장하는 모든 구체적 정보 —
-   금액, 시급, 인원수 등 수치 / 사람 이름·직책 / 장소 / 필요 서류 / 날짜·시간 /
-   결제·입금 조건 / 주의사항 — 을 하나도 빠짐없이 추출해서 나열하세요.
-   "요약"이 아니라 "발췌"입니다. 대화에 없는 내용을 지어내지 말고, 대화에 있는 내용을 생략하지 마세요.
-
-   메인 불렛 형식:
-   • [상태] [태그] 구체적인 내용 및 수치 (관련 담당자 또는 기한)
-
-   메인 불렛 아래에 필요 서류·주의사항·비용 등 상세 조건이 있으면 하위 불렛으로 나열하세요.
-   하위 불렛은 앞에 공백 2칸 + "- "를 붙입니다:
-     - 필요 서류: ...
-     - 비용/결제 조건: ...
-     - 주의사항: ...
-
-   상태값: 완료 | 진행 중 | 대기중 | 예정 | 언젠가
-
-   [잘못된 예시] — 이렇게 뭉뚱그리면 안 됨
-   • [진행중] 법인 통장 개설 및 행정 업무 처리
-
-   [올바른 예시] — 수치·서류·조건까지 모두 하위 불렛으로 전개
-   • [진행중] [은행] 기업은행(IBK) 도쿄 지점 방문 (6/30 14시)
-     - 필요 서류: 기존 서류, 법인 인감도장, 이재욱 대표 신분증 앞뒤 사본
-     - 비용: 현금 1,000엔 입금 필요 (요아정 단말기 카드대금 입금용 계좌 사용 불가, 이체 용도로만 사용)
-   • [대기중] [은행] SBJ 은행 법인 통장 개설 심사 대기 (상무님 거주지 주소 이슈 체크 필요)
-
-4. 서브항목 선별 기준
-   - 단순 인사·확인·감사("넵", "확인했습니다", "수고하세요", 이모지 단독) → 무시
-   - 실제 업무 지시, 완료 보고, 일정, 요청 사항, 결정 사항, 수치·조건 정보는 건수 제한 없이 모두 포함
-   - 완전히 동일한 내용이 반복될 때만 1건으로 병합하고, 수치·조건·날짜가 조금이라도 다르면 별도 항목으로 유지
-   - 금액, 시급, 이름, 장소, 서류명, 날짜, 결제 조건 등 구체적 정보를 "정리"라는 이유로 생략하는 것은 절대 금지
-
-━━━━━━━━━━━━━━━━━━
-날짜 인식 (기본)
-━━━━━━━━━━━━━━━━━━
-카카오톡 날짜 구분선("--- 2024년 6월 29일 토요일 ---")에서 날짜를 추출해 이후 메시지에 적용.
-오전/오후 시간은 hours 필드에 넣지 않음.
-
-대화 내용:
-${text}`,
+항목 목록:
+${summary}`,
   });
-  return object.entries;
+
+  return object.groups;
+}
+
+interface Bucket {
+  title: string;
+  indexes: number[];
+}
+
+const orphanSchema = z.object({
+  assignments: z.array(
+    z.object({
+      index: z.number().int(),
+      groupTitle: z.string().describe("아래 제시된 그룹 제목 중 하나를 그대로"),
+    })
+  ),
+});
+
+/** 남은 항목을 기존 그룹 중 하나에 배정한다 (제목은 새로 만들지 않음) */
+async function assignOrphans(
+  entries: WorkLogFormData[],
+  orphanIdx: number[],
+  titles: string[]
+) {
+  const list = orphanIdx
+    .map((i) => {
+      const e = entries[i];
+      const hint = e.content.replace(/\s+/g, " ").slice(0, 150);
+      return `[${i}] ${e.title} | 사업장: ${e.projects.join(",") || "없음"}\n    ${hint}`;
+    })
+    .join("\n");
+
+  const { object } = await generateObject({
+    model: modelPro,
+    temperature: 0.2,
+    schema: orphanSchema,
+    prompt: `아래 항목들을 이미 만들어진 그룹 중 가장 알맞은 하나에 배정하세요.
+
+사용 가능한 그룹 제목 (이 중에서만 고르고, 새로 만들지 마세요):
+${titles.map((t) => `- ${t}`).join("\n")}
+
+규칙
+- 모든 index를 빠짐없이 배정하세요.
+- groupTitle은 위 목록의 문자열을 그대로 사용하세요.
+
+항목:
+${list}`,
+  });
+
+  return object.assignments;
+}
+
+/** 모델 응답을 신뢰할 수 있는 형태로 정규화한다 (범위 초과·중복 제거) */
+function normalizeAssignment(
+  entries: WorkLogFormData[],
+  groups: { title: string; memberIndexes: number[] }[]
+): Bucket[] {
+  const seen = new Set<number>();
+  const buckets: Bucket[] = [];
+
+  for (const g of groups.slice(0, MAX_GROUPS)) {
+    const indexes = g.memberIndexes.filter((i) => {
+      if (!Number.isInteger(i) || i < 0 || i >= entries.length) return false;
+      if (seen.has(i)) return false;
+      seen.add(i);
+      return true;
+    });
+    buckets.push({ title: g.title, indexes });
+  }
+
+  return buckets;
+}
+
+function isTaken(buckets: Bucket[], index: number): boolean {
+  return buckets.some((b) => b.indexes.includes(index));
+}
+
+function findOrphans(entries: WorkLogFormData[], buckets: Bucket[]): number[] {
+  return entries
+    .map((_, i) => i)
+    .filter((i) => !isTaken(buckets, i));
+}
+
+/** 배정 결과를 실제 병합으로 옮긴다. 어떤 항목도 버려지지 않아야 한다. */
+function buildEntries(entries: WorkLogFormData[], buckets: Bucket[]): WorkLogFormData[] {
+  const result: WorkLogFormData[] = [];
+
+  for (const b of buckets) {
+    if (b.indexes.length === 0) continue;
+    result.push(mergeEntries(b.indexes.map((i) => entries[i]), { title: b.title }));
+  }
+
+  // 두 번의 배정 후에도 남은 항목은 버리지 않고 살린다 (버리면 정보 유실)
+  const orphans = findOrphans(entries, buckets);
+  if (orphans.length > 0) {
+    result.push(mergeEntries(orphans.map((i) => entries[i]), { title: "기타" }));
+  }
+
+  return result;
 }

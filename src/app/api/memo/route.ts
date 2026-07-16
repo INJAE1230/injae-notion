@@ -1,12 +1,7 @@
 import { NextResponse } from "next/server";
 import { parseMemoText, parseMemoTextGrouped } from "@/lib/ai-parser";
 import { getKSTToday } from "@/lib/date-utils";
-import { MEMO_CHUNK_SIZE } from "@/lib/constants";
-
-const CHUNK_SIZE = MEMO_CHUNK_SIZE;
-
-// 카카오톡 날짜 구분선 패턴: "--- 2024년 6월 29일 토요일 ---"
-const DATE_HEADER_RE = /^-{3,}.*\d{4}년.*\d{1,2}월.*\d{1,2}일.*-{3,}$/;
+import { splitIntoChunks } from "@/lib/memo-chunk";
 
 // PC 내보내기 메시지: "[이름] [오전/오후 H:MM] 내용"
 const PC_MSG_RE = /^\[[^\]]+\]\s*\[(?:오전|오후)\s*\d{1,2}:\d{2}\]\s*(.*)$/;
@@ -52,34 +47,6 @@ function prefilterKakaoExport(text: string): string {
       return true;
     })
     .join("\n");
-}
-
-function splitIntoChunks(text: string): string[] {
-  if (text.length <= CHUNK_SIZE) return [text];
-
-  const lines = text.split("\n");
-  const chunks: string[] = [];
-  let current = "";
-  let lastDateHeader = "";
-
-  for (const line of lines) {
-    if (DATE_HEADER_RE.test(line.trim())) {
-      lastDateHeader = line;
-    }
-
-    const toAdd = line + "\n";
-
-    if (current.length + toAdd.length > CHUNK_SIZE && current.trim()) {
-      chunks.push(current.trim());
-      // 청크 경계 넘어가면 날짜 헤더를 다음 청크 첫 줄에 붙여 날짜 맥락 유지
-      current = lastDateHeader ? lastDateHeader + "\n" + toAdd : toAdd;
-    } else {
-      current += toAdd;
-    }
-  }
-
-  if (current.trim()) chunks.push(current.trim());
-  return chunks;
 }
 
 export async function POST(request: Request) {

@@ -12,16 +12,8 @@ import { toast } from "sonner";
 import { toastError } from "@/lib/toast-utils";
 import { STATUS_COLORS, PROJECT_COLORS, TAG_COLORS, PRIORITY_COLORS } from "@/lib/constants";
 import { Paperclip } from "lucide-react";
-import type { WorkLogFormData, Status } from "@/lib/types";
-
-// 낮을수록 급함 → 병합 시 가장 시급한 상태를 채택
-const STATUS_URGENCY: Record<Status, number> = {
-  "진행 중": 0,
-  "대기중": 1,
-  "예정": 2,
-  "언젠가": 3,
-  "완료": 4,
-};
+import { mergeEntries } from "@/lib/entry-merge";
+import type { WorkLogFormData } from "@/lib/types";
 
 interface MemoPreviewProps {
   entries: WorkLogFormData[];
@@ -68,21 +60,7 @@ export function MemoPreview({
     if (idxArr.length < 2) return;
     const picked = idxArr.map((i) => entries[i]);
 
-    const merged: WorkLogFormData = {
-      ...picked[0],
-      projects: Array.from(new Set(picked.flatMap((e) => e.projects))),
-      tags: Array.from(new Set(picked.flatMap((e) => e.tags))),
-      status: picked.reduce((best, e) =>
-        STATUS_URGENCY[e.status] < STATUS_URGENCY[best.status] ? e : best
-      ).status,
-      priority: picked.find((e) => e.priority)?.priority ?? null,
-      hours: picked.some((e) => e.hours != null)
-        ? picked.reduce((sum, e) => sum + (e.hours || 0), 0)
-        : null,
-      content: Array.from(new Set(picked.map((e) => e.content).filter(Boolean))).join("\n"),
-      link: picked.find((e) => e.link)?.link ?? null,
-      attachments: picked.flatMap((e) => e.attachments || []),
-    };
+    const merged = mergeEntries(picked);
 
     const result: WorkLogFormData[] = [];
     let inserted = false;
