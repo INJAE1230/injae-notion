@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useState } from "react";
 import {
@@ -24,6 +24,7 @@ import {
   Layers,
   Smartphone,
   Search,
+  LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -83,7 +84,21 @@ export const NAV_GROUPS = [
 
 export function NavContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { theme, setTheme } = useTheme();
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      onNavigate?.();
+      router.push("/login");
+      router.refresh();
+    } finally {
+      setLoggingOut(false);
+    }
+  };
 
   return (
     <div className="flex h-full flex-col">
@@ -138,7 +153,7 @@ export function NavContent({ onNavigate }: { onNavigate?: () => void }) {
         ))}
       </nav>
 
-      <div className="px-3 pb-4">
+      <div className="space-y-0.5 px-3 pb-4">
         <Button
           variant="ghost"
           size="sm"
@@ -148,6 +163,16 @@ export function NavContent({ onNavigate }: { onNavigate?: () => void }) {
           <Sun className="h-4 w-4 rotate-0 scale-100 transition-transform dark:-rotate-90 dark:scale-0" />
           <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-transform dark:rotate-0 dark:scale-100" />
           <span className="ml-4">테마 변경</span>
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start gap-3 text-[13px] text-muted-foreground hover:text-foreground"
+          onClick={handleLogout}
+          disabled={loggingOut}
+        >
+          <LogOut className="h-4 w-4" />
+          {loggingOut ? "로그아웃 중..." : "로그아웃"}
         </Button>
       </div>
     </div>

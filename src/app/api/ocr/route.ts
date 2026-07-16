@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { generateObject } from "ai";
 import { z } from "zod";
 import { model } from "@/lib/ai";
+import { getKSTToday } from "@/lib/date-utils";
 
 const receiptSchema = z.object({
   storeName: z.string().describe("상호명/가게이름"),
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const today = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" })).toISOString().split("T")[0];
+    const today = getKSTToday();
 
     const { object } = await generateObject({
       model,

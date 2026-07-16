@@ -18,13 +18,10 @@ import { toastError } from "@/lib/toast-utils";
 import { ChevronDown } from "lucide-react";
 import { PROJECTS, STATUSES, PRIORITIES, PRIORITY_COLORS, PROJECT_COLORS, ACHIEVEMENT_RATINGS } from "@/lib/constants";
 import { FileUpload } from "@/components/file-upload";
+import { getKSTToday } from "@/lib/date-utils";
 import type { OcrResult } from "@/components/file-upload";
 import type { WorkLog, WorkLogFormData, Priority, AchievementRating, Project, Track } from "@/lib/types";
 import { cn } from "@/lib/utils";
-
-function getToday() {
-  return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" })).toISOString().split("T")[0];
-}
 
 export function LogForm({ log, initialDate, initialTrackId, onSuccess }: { log?: WorkLog; initialDate?: string; initialTrackId?: string; onSuccess?: () => void }) {
   const router = useRouter();
@@ -32,7 +29,7 @@ export function LogForm({ log, initialDate, initialTrackId, onSuccess }: { log?:
 
   const [form, setForm] = useState<WorkLogFormData>({
     title: log?.title || "",
-    date: log?.date || initialDate || getToday(),
+    date: log?.date || initialDate || getKSTToday(),
     projects: log?.projects || ["청초수"],
     status: log?.status || "예정",
     priority: log?.priority || null,

@@ -956,7 +956,7 @@ export function TrackBoard({ tracks: initialTracks, allLogs, initialTrackId }: T
         open={!!deleteTarget}
         onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}
         title="트랙을 삭제할까요?"
-        description={deleteTarget ? `"${deleteTarget.title}" 트랙이 삭제됩니다. 이 작업은 되돌릴 수 없습니다.` : undefined}
+        description={deleteTarget ? `"${deleteTarget.title}" 트랙이 삭제됩니다. 트랙에 올린 첨부파일도 함께 영구 삭제되며, 되돌릴 수 없습니다.` : undefined}
         confirmLabel="삭제"
         destructive
         onConfirm={() => { if (deleteTarget) handleDelete(deleteTarget); setDeleteTarget(null); }}

@@ -18,7 +18,9 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (pathname === "/api/cron/generate" || pathname === "/api/cron/leave-recalc") {
+  // 크론 라우트는 각자 CRON_SECRET Bearer로 인증한다. 개별 경로를 나열하면
+  // 새 크론을 추가할 때 빠뜨리기 쉬워(실제로 leave-recalc가 그랬음) prefix로 처리.
+  if (pathname.startsWith("/api/cron/")) {
     return NextResponse.next();
   }
 

@@ -52,7 +52,7 @@ export function DeleteLogButton({ logId, title }: { logId: string; title: string
           <DialogHeader>
             <DialogTitle>업무 삭제</DialogTitle>
             <DialogDescription>
-              &quot;{title}&quot;을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+              &quot;{title}&quot;을(를) 삭제하시겠습니까? 첨부파일도 함께 영구 삭제되며, 이 작업은 되돌릴 수 없습니다.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

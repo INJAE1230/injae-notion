@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { put, del, list } from "@vercel/blob";
+import { isTrackFileUrl } from "@/lib/blob-cleanup";
 
 export async function GET(
   _request: NextRequest,
@@ -40,11 +41,21 @@ export async function POST(
 
 export async function DELETE(
   request: NextRequest,
-  _context: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: trackId } = await params;
     const { url } = await request.json();
     if (!url) return NextResponse.json({ error: "URL이 없습니다" }, { status: 400 });
+
+    // 이 트랙 소속 파일만 지울 수 있게 제한 (임의 blob 삭제 방지)
+    if (!isTrackFileUrl(url, trackId)) {
+      return NextResponse.json(
+        { error: "이 트랙의 파일이 아닙니다" },
+        { status: 400 }
+      );
+    }
+
     await del(url);
     return NextResponse.json({ success: true });
   } catch (error) {

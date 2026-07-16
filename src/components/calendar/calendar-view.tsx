@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { STATUS_COLORS, PROJECT_COLORS } from "@/lib/constants";
 import { getHoliday } from "@/lib/holidays";
+import { getKSTNow, formatDate } from "@/lib/date-utils";
 import type { WorkLog } from "@/lib/types";
 
 interface CalendarViewProps {
@@ -29,14 +30,14 @@ const MONTH_NAMES = [
 ];
 
 export function CalendarView({ logs }: CalendarViewProps) {
-  const now = new Date();
+  const now = getKSTNow();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfMonth(year, month);
-  const todayStr = now.toISOString().split("T")[0];
+  const todayStr = formatDate(now);
 
   const logsByDate: Record<string, WorkLog[]> = {};
   for (const log of logs) {

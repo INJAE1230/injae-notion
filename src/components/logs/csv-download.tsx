@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
+import { getKSTToday } from "@/lib/date-utils";
 import type { WorkLog } from "@/lib/types";
 
 function escapeCsv(value: string) {
@@ -35,7 +36,7 @@ export function CsvDownload({ logs }: { logs: WorkLog[] }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `업무일지_${new Date().toISOString().split("T")[0]}.csv`;
+    a.download = `업무일지_${getKSTToday()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };

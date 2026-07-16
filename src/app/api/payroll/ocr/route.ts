@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { generateObject } from "ai";
 import { z } from "zod";
 import { model } from "@/lib/ai";
+import { getKSTToday } from "@/lib/date-utils";
+
+const MAX_SIZE = 10 * 1024 * 1024; // 10MB
 
 // 급여명세서 이미지에서 추출할 항목. 모든 금액/수치는 못 읽으면 null.
 const payslipSchema = z.object({
@@ -34,19 +37,27 @@ const payslipSchema = z.object({
   note: z.string().nullable().describe("비고/특이사항 (없으면 null)"),
 });
 
+// 급여명세서는 민감 정보라 Blob에 저장하지 않고, 업로드된 바이트를 그대로
+// 모델에 넘겨 이 요청 안에서만 처리한다.
 export async function POST(request: Request) {
   try {
-    const { imageUrl } = await request.json();
+    const formData = await request.formData();
+    const file = formData.get("file") as File | null;
 
-    if (!imageUrl) {
-      return NextResponse.json({ error: "이미지 URL이 필요합니다." }, { status: 400 });
+    if (!file) {
+      return NextResponse.json({ error: "이미지 파일이 필요합니다." }, { status: 400 });
     }
 
-    const today = new Date(
-      new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" })
-    )
-      .toISOString()
-      .split("T")[0];
+    if (!file.type.startsWith("image/")) {
+      return NextResponse.json({ error: "이미지 파일만 인식할 수 있습니다." }, { status: 400 });
+    }
+
+    if (file.size > MAX_SIZE) {
+      return NextResponse.json({ error: "파일 크기는 10MB 이하만 가능합니다." }, { status: 400 });
+    }
+
+    const image = new Uint8Array(await file.arrayBuffer());
+    const today = getKSTToday();
 
     const { object } = await generateObject({
       model,
@@ -65,7 +76,7 @@ export async function POST(request: Request) {
 - 여러 수당이 세분화되어 있으면 가장 가까운 항목에 매핑하고, 애매한 것은 otherPay(기타수당)/otherDeduction(기타공제)에 합산
 - 연말정산 환급액은 음수로 표기`,
             },
-            { type: "image", image: imageUrl },
+            { type: "image", image, mediaType: file.type },
           ],
         },
       ],

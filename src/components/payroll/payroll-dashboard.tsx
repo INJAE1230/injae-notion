@@ -251,19 +251,10 @@ export function PayrollDashboard({
     }
     setOcrLoading(true);
     try {
-      // 1) 이미지 업로드 → URL 확보
+      // 급여명세서는 저장 없이 인식만 — 파일을 그대로 보낸다
       const fd = new FormData();
       fd.append("file", file);
-      const upRes = await fetch("/api/upload", { method: "POST", body: fd });
-      const upData = await upRes.json();
-      if (!upRes.ok) throw new Error(upData.error || "이미지 업로드 실패");
-
-      // 2) URL로 급여명세서 인식
-      const ocrRes = await fetch("/api/payroll/ocr", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageUrl: upData.url }),
-      });
+      const ocrRes = await fetch("/api/payroll/ocr", { method: "POST", body: fd });
       const ocrData = await ocrRes.json();
       if (!ocrRes.ok) throw new Error(ocrData.error || "인식 실패");
 

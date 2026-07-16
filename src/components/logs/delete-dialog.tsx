@@ -46,8 +46,8 @@ export function DeleteDialog({
         <DialogHeader>
           <DialogTitle>업무 삭제</DialogTitle>
           <DialogDescription>
-            &quot;{log?.title}&quot;을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수
-            없습니다.
+            &quot;{log?.title}&quot;을(를) 삭제하시겠습니까? 첨부파일도 함께 영구
+            삭제되며, 이 작업은 되돌릴 수 없습니다.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
