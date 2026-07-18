@@ -19,7 +19,9 @@ export const aiTools = {
   searchWorkLogs: tool({
     description:
       "업무일지를 조건으로 검색한다. 사용자가 명시적으로 언급한 조건만 값을 넣고, 언급하지 않은 필터는 반드시 null로 둔다. " +
-      "예: '이번주 업무'는 기간만 넣고 project·status·priority·search는 null. '청초수 완료 업무'는 project·status만 넣고 나머지는 null.",
+      "예: '이번주 업무'는 기간만 넣고 project·status·priority·search는 null. '청초수 완료 업무'는 project·status만 넣고 나머지는 null. " +
+      "search는 공백 구분 다중 키워드를 AND 매칭한다(제목·내용·입력원본·성과 대상). " +
+      "키워드 검색이 0건이거나 사용자 기억이 흐릿한 찾기 질문('그때 그 업체 견적 건')이면 search를 null로 두고 넓게 조회한 뒤, 반환된 content·originalText를 직접 읽고 의미로 골라낼 것.",
     inputSchema: z.object({
       project: z.enum(PROJECTS as [string, ...string[]]).nullable().describe("사업장. 사용자가 특정 사업장을 말했을 때만 값, 아니면 null"),
       status: z.enum(STATUSES as [string, ...string[]]).nullable().describe("진행 상태. 사용자가 상태를 말했을 때만 값, 아니면 null"),
@@ -40,10 +42,11 @@ export const aiTools = {
       const logs = await queryWorkLogs(
         Object.keys(filters).length > 0 ? filters : undefined
       );
-      // 토큰 절약: 최대 40건, 필드 축약
+      // 토큰 절약: 최대 80건, 긴 텍스트는 앞부분만.
+      // content·originalText를 포함해야 키워드가 안 맞아도 모델이 의미로 찾을 수 있다.
       return {
         count: logs.length,
-        logs: logs.slice(0, 40).map((l) => ({
+        logs: logs.slice(0, 80).map((l) => ({
           id: l.id,
           title: l.title,
           date: l.date,
@@ -51,8 +54,10 @@ export const aiTools = {
           projects: l.projects,
           priority: l.priority,
           hours: l.hours,
+          content: l.content ? l.content.slice(0, 80) : null,
+          originalText: l.originalText ? l.originalText.slice(0, 80) : null,
         })),
-        truncated: logs.length > 40,
+        truncated: logs.length > 80,
       };
     },
   }),

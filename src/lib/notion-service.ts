@@ -103,18 +103,19 @@ function buildFilter(filters: WorkLogFilters) {
     }
   }
   if (filters.search) {
-    conditions.push({
-      or: [
-        {
-          property: "업무",
-          title: { contains: filters.search },
-        },
-        {
-          property: "업무내용",
-          rich_text: { contains: filters.search },
-        },
-      ],
-    });
+    // 공백으로 나눈 키워드 각각이 제목·내용·입력원본·성과 중 어딘가에 있으면 매칭 (AND of OR).
+    // 입력원본을 포함해야 AI가 다듬기 전에 사용자가 쓴 표현 그대로도 검색된다.
+    const keywords = filters.search.trim().split(/\s+/).filter(Boolean);
+    for (const keyword of keywords) {
+      conditions.push({
+        or: [
+          { property: "업무", title: { contains: keyword } },
+          { property: "업무내용", rich_text: { contains: keyword } },
+          { property: "입력원본", rich_text: { contains: keyword } },
+          { property: "성과/결과", rich_text: { contains: keyword } },
+        ],
+      });
+    }
   }
   if (filters.hideTrackLinked) {
     conditions.push({
