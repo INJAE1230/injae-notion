@@ -167,6 +167,61 @@ ${pendingList || "없음"}
   return text;
 }
 
+export interface BriefingPayload {
+  todayTasks: { title: string; status: string; priority: string | null; projects: string[] }[];
+  overdue: { title: string; date: string; priority: string | null; projects: string[] }[];
+  inProgress: { title: string; projects: string[] }[];
+  weekCompleted: number;
+}
+
+export async function generateMorningBriefing(
+  data: BriefingPayload,
+  today: string
+): Promise<string> {
+  const weekday = ["일", "월", "화", "수", "목", "금", "토"][new Date(today + "T00:00:00").getDay()];
+  const daysOverdue = (date: string) =>
+    Math.round((new Date(today + "T00:00:00").getTime() - new Date(date + "T00:00:00").getTime()) / 86400000);
+
+  const overdueList = data.overdue
+    .slice(0, 10)
+    .map((l) => `- ${l.title} (${daysOverdue(l.date)}일 지남${l.priority ? `, ${l.priority}` : ""}, ${l.projects.join("·") || "사업장 미지정"})`)
+    .join("\n");
+  const todayList = data.todayTasks
+    .slice(0, 15)
+    .map((l) => `- [${l.status}] ${l.title}${l.priority ? ` (${l.priority})` : ""} / ${l.projects.join("·") || "사업장 미지정"}`)
+    .join("\n");
+  const inProgressList = data.inProgress
+    .slice(0, 10)
+    .map((l) => `- ${l.title} (${l.projects.join("·") || "사업장 미지정"})`)
+    .join("\n");
+
+  const { text } = await generateText({
+    model,
+    prompt: `당신은 유능한 업무 비서입니다. 아래 데이터만 근거로 아침 브리핑을 작성하세요.
+
+오늘: ${today} (${weekday}요일)
+
+[기한 지난 업무]
+${overdueList || "없음"}
+
+[오늘 업무]
+${todayList || "없음"}
+
+[진행 중 업무]
+${inProgressList || "없음"}
+
+이번 주 완료: ${data.weekCompleted}건
+
+규칙:
+- 2~4문장의 자연스러운 한국어 존댓말. 마크다운 기호(#, **, - 등) 사용 금지
+- 가장 급한 것(기한 초과, 긴급+중요)부터 언급하고, 며칠째 밀린 업무는 구체적으로 짚을 것
+- 데이터에 없는 내용을 지어내지 말 것
+- 할 일이 적은 날은 가볍게 한두 문장으로, 많은 날은 무엇부터 할지 우선순위를 잡아줄 것`,
+  });
+
+  return text.trim();
+}
+
 const workLogSchema = z.object({
   entries: z.array(
     z.object({

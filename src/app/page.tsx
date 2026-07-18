@@ -10,6 +10,7 @@ import { WeeklyChart } from "@/components/dashboard/weekly-chart";
 import { CompletionRateChart } from "@/components/dashboard/completion-rate-chart";
 import { RecentLogs } from "@/components/dashboard/recent-logs";
 import { QuickMemoInput } from "@/components/memo/quick-memo-input";
+import { MorningBriefing } from "@/components/dashboard/morning-briefing";
 import { TodayTasks } from "@/components/dashboard/today-tasks";
 import { UpcomingDeadlines } from "@/components/dashboard/upcoming-deadlines";
 import { DeadlineAlert } from "@/components/dashboard/deadline-alert";
@@ -58,6 +59,9 @@ export default async function DashboardPage() {
           {getGreeting()} 👋
         </h1>
       </div>
+
+      {/* AI 아침 브리핑 */}
+      <MorningBriefing logs={ownLogs} />
 
       {/* 핵심 수치 */}
       <SummaryCards stats={stats} />
