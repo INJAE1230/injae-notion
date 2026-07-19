@@ -1,5 +1,5 @@
 import { streamText, convertToModelMessages, stepCountIs, type UIMessage } from "ai";
-import { modelPro } from "@/lib/ai";
+import { modelAssistant } from "@/lib/ai";
 import { aiTools } from "@/lib/ai-tools";
 import { getKSTToday } from "@/lib/date-utils";
 
@@ -12,9 +12,10 @@ export async function POST(request: Request) {
   const today = getKSTToday();
 
   const result = streamText({
-    // tool 파라미터 선택 정확도가 답변 품질을 좌우하므로 gpt-4o 사용.
-    // 채팅은 단발 호출이라 그룹 파싱 때 문제됐던 병렬 TPM 초과 위험이 낮다.
-    model: modelPro,
+    // tool 파라미터 선택 정확도가 답변 품질을 좌우한다. Claude Haiku 우선,
+    // ANTHROPIC_API_KEY 없으면 gpt-4o로 폴백(ai.ts에서 결정).
+    model: modelAssistant,
+    maxOutputTokens: 4096,
     // 여러 tool을 연속 호출한 뒤 답하도록 멀티스텝 허용 (무한루프 방지 상한)
     stopWhen: stepCountIs(6),
     system: `당신은 이 업무 관리 앱의 AI 비서입니다. 사용자의 업무일지·트랙·근태·연차·급여 데이터를 조회해 질문에 답합니다.

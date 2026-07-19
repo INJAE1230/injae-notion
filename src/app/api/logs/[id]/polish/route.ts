@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateText } from "ai";
-import { model } from "@/lib/ai";
+import { modelPolish } from "@/lib/ai";
 import { getWorkLog, updateWorkLog } from "@/lib/notion-service";
 
 export async function POST(
@@ -16,7 +16,8 @@ export async function POST(
     }
 
     const { text } = await generateText({
-      model,
+      model: modelPolish,
+      maxOutputTokens: 4096,
       prompt: `당신은 한국 직장인의 업무일지 작성을 도와주는 어시스턴트입니다.
 아래 업무 내용을 깔끔하고 전문적인 업무일지 문체로 다듬어주세요.
 
