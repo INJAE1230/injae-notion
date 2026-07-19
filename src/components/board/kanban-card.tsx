@@ -4,14 +4,16 @@ import { useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useDraggable } from "@dnd-kit/core";
 import { Badge } from "@/components/ui/badge";
+import { Loader2 } from "lucide-react";
 import { PROJECT_COLORS, PRIORITY_COLORS } from "@/lib/constants";
 import type { WorkLog } from "@/lib/types";
 
 interface KanbanCardProps {
   log: WorkLog;
+  isUpdating?: boolean;
 }
 
-export function KanbanCard({ log }: KanbanCardProps) {
+export function KanbanCard({ log, isUpdating }: KanbanCardProps) {
   const router = useRouter();
   const pointerStart = useRef<{ x: number; y: number } | null>(null);
 
@@ -44,10 +46,15 @@ export function KanbanCard({ log }: KanbanCardProps) {
         }
         pointerStart.current = null;
       }}
-      className={`rounded-lg border bg-card p-3 shadow-sm cursor-pointer transition-shadow ${
+      className={`relative rounded-lg border bg-card p-3 shadow-sm cursor-pointer transition-shadow ${
         isDragging ? "opacity-50 shadow-lg ring-2 ring-primary/30" : "hover:shadow-md"
-      }`}
+      } ${isUpdating ? "opacity-60 pointer-events-none" : ""}`}
     >
+      {isUpdating && (
+        <div className="absolute top-2 right-2">
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+        </div>
+      )}
       <p className="text-sm font-medium truncate">{log.title}</p>
       <div className="flex flex-wrap items-center gap-1 mt-1.5">
         {log.projects.map((proj) => (

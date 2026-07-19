@@ -23,7 +23,7 @@ import type { OcrResult } from "@/components/file-upload";
 import type { WorkLog, WorkLogFormData, Priority, AchievementRating, Project, Track } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-export function LogForm({ log, initialDate, initialTrackId, onSuccess }: { log?: WorkLog; initialDate?: string; initialTrackId?: string; onSuccess?: () => void }) {
+export function LogForm({ log, initialDate, initialTrackId, initialStatus, onSuccess }: { log?: WorkLog; initialDate?: string; initialTrackId?: string; initialStatus?: string; onSuccess?: () => void }) {
   const router = useRouter();
   const isEdit = !!log;
 
@@ -31,7 +31,7 @@ export function LogForm({ log, initialDate, initialTrackId, onSuccess }: { log?:
     title: log?.title || "",
     date: log?.date || initialDate || getKSTToday(),
     projects: log?.projects || ["청초수"],
-    status: log?.status || "예정",
+    status: log?.status || (initialStatus as WorkLogFormData["status"]) || "예정",
     priority: log?.priority || null,
     content: log?.content || "",
     tags: log?.tags || [],

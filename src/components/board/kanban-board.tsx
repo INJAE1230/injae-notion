@@ -23,7 +23,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { STATUS_COLORS, PROJECT_COLORS, PRIORITY_COLORS, PROJECTS } from "@/lib/constants";
-import { Layers } from "lucide-react";
+import { Layers, Plus } from "lucide-react";
+import Link from "next/link";
 import { KanbanCard } from "./kanban-card";
 import type { WorkLog, Status, Project } from "@/lib/types";
 
@@ -36,16 +37,18 @@ interface KanbanBoardProps {
 function KanbanColumn({
   status,
   logs,
+  updatingId,
 }: {
   status: Status;
   logs: WorkLog[];
+  updatingId: string | null;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
 
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-col min-w-[260px] w-[260px] shrink-0 rounded-xl border bg-muted/30 transition-colors ${
+      className={`flex flex-col flex-1 min-w-[200px] rounded-xl border bg-muted/30 transition-colors ${
         isOver ? "ring-2 ring-primary/40 bg-primary/5" : ""
       }`}
     >
@@ -58,6 +61,13 @@ function KanbanColumn({
             {logs.length}
           </span>
         </div>
+        <Link
+          href={`/logs/new?status=${encodeURIComponent(status)}`}
+          className="text-muted-foreground hover:text-foreground transition-colors"
+          title={`${status} 상태로 업무 추가`}
+        >
+          <Plus className="h-4 w-4" />
+        </Link>
       </div>
       <div className="flex-1 p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-220px)]">
         {logs.length === 0 ? (
@@ -65,7 +75,9 @@ function KanbanColumn({
             업무 없음
           </p>
         ) : (
-          logs.map((log) => <KanbanCard key={log.id} log={log} />)
+          logs.map((log) => (
+            <KanbanCard key={log.id} log={log} isUpdating={updatingId === log.id} />
+          ))
         )}
       </div>
     </div>
@@ -193,6 +205,7 @@ export function KanbanBoard({ initialLogs }: KanbanBoardProps) {
               key={status}
               status={status}
               logs={filteredLogs.filter((l) => l.status === status)}
+              updatingId={updatingId}
             />
           ))}
         </div>

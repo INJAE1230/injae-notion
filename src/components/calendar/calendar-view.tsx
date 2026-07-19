@@ -132,7 +132,7 @@ export function CalendarView({ logs }: CalendarViewProps) {
                     {day}
                   </div>
                   {holiday && (
-                    <div className="text-[9px] leading-tight text-red-500 font-medium truncate hidden sm:block">
+                    <div className="text-[9px] leading-tight text-red-500 font-medium truncate">
                       {holiday}
                     </div>
                   )}
@@ -178,8 +178,11 @@ export function CalendarView({ logs }: CalendarViewProps) {
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium">
-                {selectedDate} 업무 ({selectedLogs.length}건)
+              <CardTitle className="text-sm font-medium flex flex-wrap items-center gap-x-2">
+                <span>{selectedDate} 업무 ({selectedLogs.length}건)</span>
+                {getHoliday(selectedDate) && (
+                  <span className="text-xs font-semibold text-red-500">· {getHoliday(selectedDate)}</span>
+                )}
               </CardTitle>
               <Link href={`/logs/new?date=${selectedDate}`}>
                 <Button variant="outline" size="sm">
