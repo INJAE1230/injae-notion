@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Trash2 } from "lucide-react";
 import { ATTENDANCE_CATEGORIES } from "@/lib/hr-types";
-import { parseDeductionMethod, stripDeductionPrefix } from "@/lib/leave-utils";
+import { parseDeductionMethod, stripDeductionPrefix, parseOvertimeHours, stripOvertimePrefix, COMP_DAY_UNIT_HOURS } from "@/lib/leave-utils";
 import type { AttendanceFormData, AttendanceCategory, DeductionMethod, Employee } from "@/lib/hr-types";
 
 interface AttendanceFormProps {
@@ -33,8 +33,12 @@ export function AttendanceForm({ employees, onSubmit, onCancel, initial, submitL
     employeeId: initial?.employeeId || activeEmployees[0]?.id || "",
     date: initial?.date || today(),
     category: initialCategory,
-    note: initialCategory === "조퇴" ? stripDeductionPrefix(initialNote) : initialNote,
+    note:
+      initialCategory === "조퇴" ? stripDeductionPrefix(initialNote)
+      : initialCategory === "초과근무" ? stripOvertimePrefix(initialNote)
+      : initialNote,
     deductionMethod: initial?.deductionMethod ?? (initialCategory === "조퇴" ? parseDeductionMethod(initialNote) || "연차" : undefined),
+    overtimeHours: initial?.overtimeHours ?? (initialCategory === "초과근무" ? parseOvertimeHours(initialNote) ?? undefined : undefined),
   });
   const [loading, setLoading] = useState(false);
 
@@ -45,6 +49,7 @@ export function AttendanceForm({ employees, onSubmit, onCancel, initial, submitL
       ...prev,
       category,
       deductionMethod: category === "조퇴" ? (prev.deductionMethod || "연차") : undefined,
+      overtimeHours: category === "초과근무" ? prev.overtimeHours : undefined,
     }));
   };
 
@@ -103,6 +108,23 @@ export function AttendanceForm({ employees, onSubmit, onCancel, initial, submitL
         </div>
       </div>
 
+      {form.category === "초과근무" && (
+        <div>
+          <label className="text-xs font-medium">근무 시간 *</label>
+          <Input
+            type="number"
+            min={0.5}
+            step={0.5}
+            value={form.overtimeHours ?? ""}
+            onChange={(e) => setForm({ ...form, overtimeHours: e.target.value ? Number(e.target.value) : undefined })}
+            placeholder="예: 4"
+          />
+          <p className="text-[11px] text-muted-foreground mt-1">
+            누적 {COMP_DAY_UNIT_HOURS}시간마다 미사용휴무 1개가 자동으로 생깁니다.
+          </p>
+        </div>
+      )}
+
       {form.category === "조퇴" && (
         <div>
           <label className="text-xs font-medium">차감방식 *</label>
@@ -135,9 +157,9 @@ export function AttendanceForm({ employees, onSubmit, onCancel, initial, submitL
       {selectedEmployee && (
         <div className="text-xs text-muted-foreground bg-accent/50 rounded-md px-3 py-2">
           잔여연차: <span className="font-semibold">{selectedEmployee.remainingLeave}일</span> / {selectedEmployee.annualLeaveTotal}일
-          {selectedEmployee.unusedRestTotal > 0 && (
+          {(selectedEmployee.remainingUnusedRest > 0 || selectedEmployee.unusedRestTotal > 0) && (
             <>
-              {" · "}미사용휴무: <span className="font-semibold">{selectedEmployee.remainingUnusedRest}개</span> / {selectedEmployee.unusedRestTotal}개
+              {" · "}미사용휴무 잔여: <span className="font-semibold">{selectedEmployee.remainingUnusedRest}개</span>
             </>
           )}
         </div>

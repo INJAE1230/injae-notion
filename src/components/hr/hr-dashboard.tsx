@@ -35,7 +35,7 @@ import {
   EMPLOYMENT_STATUS_COLORS,
   ATTENDANCE_CATEGORY_COLORS,
 } from "@/lib/hr-types";
-import { calculateUsedLeave, calculateUsedUnusedRest } from "@/lib/leave-utils";
+import { calculateUsedLeave, calculateUsedUnusedRest, calculateEarnedCompDays } from "@/lib/leave-utils";
 import type { Employee, AttendanceRecord, EmployeeFormData, AttendanceFormData, LeaveBalance } from "@/lib/hr-types";
 import { EmployeeForm } from "./employee-form";
 import { AttendanceForm } from "./attendance-form";
@@ -92,12 +92,14 @@ export function HrDashboard({ initialEmployees, initialAttendance }: HrDashboard
       const empRecords = attendance.filter((a) => a.employeeId === emp.id);
       const used = calculateUsedLeave(empRecords);
       const usedRest = calculateUsedUnusedRest(empRecords);
+      const totalUnusedRest = emp.unusedRestTotal + calculateEarnedCompDays(empRecords);
       return {
         employee: emp,
         usedLeave: used,
         remainingLeave: emp.annualLeaveTotal - used,
         usedUnusedRest: usedRest,
-        remainingUnusedRest: emp.unusedRestTotal - usedRest,
+        remainingUnusedRest: totalUnusedRest - usedRest,
+        totalUnusedRest,
       };
     });
   }, [activeEmployees, attendance]);
@@ -507,12 +509,17 @@ export function HrDashboard({ initialEmployees, initialAttendance }: HrDashboard
                             급여차감대상
                           </Badge>
                         )}
+                        {record.category === "초과근무" && record.overtimeHours && (
+                          <Badge variant="outline" className="text-[10px]">
+                            {record.overtimeHours}시간
+                          </Badge>
+                        )}
                       </div>
                       <div className="flex items-center gap-1.5 mt-1 text-[11px] text-muted-foreground">
                         <span>
                           {record.date} ({["일","월","화","수","목","금","토"][new Date(record.date + "T00:00:00").getDay()]})
                         </span>
-                        {record.note && <span>· {record.note.replace(/^\[(연차|정휴무)차감\]\s*/, "")}</span>}
+                        {record.note && <span>· {record.note.replace(/^\[(연차|정휴무)차감\]\s*/, "").replace(/^\[초과\d+(?:\.\d+)?시간\]\s*/, "")}</span>}
                       </div>
                     </div>
                     <div className="flex gap-1.5 shrink-0">
@@ -579,10 +586,10 @@ export function HrDashboard({ initialEmployees, initialAttendance }: HrDashboard
                           <span className="text-[11px] text-muted-foreground">사용 {lb.usedLeave}일</span>
                           <span className="text-[11px] text-muted-foreground">잔여 {lb.remainingLeave}일</span>
                         </div>
-                        {lb.employee.unusedRestTotal > 0 && (
+                        {lb.totalUnusedRest > 0 && (
                           <div className="flex justify-between mt-2 pt-2 border-t text-[11px]">
                             <span className="text-muted-foreground">미사용휴무 사용 {lb.usedUnusedRest}개</span>
-                            <span className="font-medium">잔여 {lb.remainingUnusedRest}개 / {lb.employee.unusedRestTotal}개</span>
+                            <span className="font-medium">잔여 {lb.remainingUnusedRest}개 / {lb.totalUnusedRest}개</span>
                           </div>
                         )}
                       </div>

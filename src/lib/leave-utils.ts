@@ -18,6 +18,48 @@ export function stripDeductionPrefix(note: string): string {
   return note.replace(/^\[(연차|정휴무)차감\]\s*/, "");
 }
 
+const OVERTIME_PREFIX_RE = /^\[초과(\d+(?:\.\d+)?)시간\]\s*/;
+
+// 초과근무 시간을 근태 비고란에 인코딩. Notion에 별도 필드를 추가하지
+// 않고, 조퇴의 [연차차감]/[정휴무차감] 패턴과 동일하게 접두어로 저장한다.
+export function encodeOvertimeHours(hours: number, note: string): string {
+  return `[초과${hours}시간] ${note}`.trim();
+}
+
+export function parseOvertimeHours(note: string): number | null {
+  const m = note.match(OVERTIME_PREFIX_RE);
+  return m ? Number(m[1]) : null;
+}
+
+export function stripOvertimePrefix(note: string): string {
+  return note.replace(OVERTIME_PREFIX_RE, "");
+}
+
+// 초과근무 누적시간이 이 값에 도달할 때마다 미사용휴무 1개로 자동 전환된다.
+// 이 사업장의 정휴무 1일 = 11시간 기준과 동일하게 맞춤.
+export const COMP_DAY_UNIT_HOURS = 11;
+
+function sumOvertimeHours(records: AttendanceRecord[]): number {
+  return records
+    .filter((r) => r.category === "초과근무")
+    .reduce((sum, r) => sum + (r.overtimeHours ?? parseOvertimeHours(r.note) ?? 0), 0);
+}
+
+// 초과근무 적립시간으로 자동 생성된 미사용휴무 개수 (내림)
+export function calculateEarnedCompDays(records: AttendanceRecord[], unitHours: number = COMP_DAY_UNIT_HOURS): number {
+  return Math.floor(sumOvertimeHours(records) / unitHours);
+}
+
+// 다음 미사용휴무 1개까지 남은 진행 상황 (UI 표시용)
+export function calculateOvertimeProgress(
+  records: AttendanceRecord[],
+  unitHours: number = COMP_DAY_UNIT_HOURS
+): { totalHours: number; earnedDays: number; remainderHours: number } {
+  const totalHours = sumOvertimeHours(records);
+  const earnedDays = Math.floor(totalHours / unitHours);
+  return { totalHours, earnedDays, remainderHours: totalHours - earnedDays * unitHours };
+}
+
 export function calculateUsedLeave(records: AttendanceRecord[]): number {
   let used = 0;
   for (const r of records) {
@@ -48,7 +90,7 @@ export function calculateUsedUnusedRest(records: AttendanceRecord[]): number {
 }
 
 export function calculateRemainingUnusedRest(unusedRestTotal: number, records: AttendanceRecord[]): number {
-  return unusedRestTotal - calculateUsedUnusedRest(records);
+  return unusedRestTotal + calculateEarnedCompDays(records) - calculateUsedUnusedRest(records);
 }
 
 export function isEarlyLeavePayDeductible(deductionMethod: DeductionMethod | undefined): boolean {

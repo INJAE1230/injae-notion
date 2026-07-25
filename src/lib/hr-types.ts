@@ -4,7 +4,7 @@ export type EmploymentStatus = "재직" | "퇴사";
 export type Position = "사원" | "주임" | "팀장" | "과장" | "차장" | "대표";
 export type AttendanceCategory =
   | "정상근무" | "연차" | "반차" | "정휴무" | "관공휴일"
-  | "대출" | "출장" | "조퇴" | "결근" | "근로자의날" | "미사용휴무";
+  | "대출" | "출장" | "조퇴" | "결근" | "근로자의날" | "미사용휴무" | "초과근무";
 export type DeductionMethod = "연차" | "정휴무";
 
 export interface Employee {
@@ -44,6 +44,7 @@ export interface AttendanceRecord {
   category: AttendanceCategory;
   note: string;
   deductionMethod?: DeductionMethod;
+  overtimeHours?: number;
 }
 
 export interface AttendanceFormData {
@@ -52,6 +53,7 @@ export interface AttendanceFormData {
   category: AttendanceCategory;
   note: string;
   deductionMethod?: DeductionMethod;
+  overtimeHours?: number;
 }
 
 export interface LeaveBalance {
@@ -60,13 +62,14 @@ export interface LeaveBalance {
   remainingLeave: number;
   usedUnusedRest: number;
   remainingUnusedRest: number;
+  totalUnusedRest: number;
 }
 
 export const POSITIONS: Position[] = ["사원", "주임", "팀장", "과장", "차장", "대표"];
 export const EMPLOYMENT_STATUSES: EmploymentStatus[] = ["재직", "퇴사"];
 export const ATTENDANCE_CATEGORIES: AttendanceCategory[] = [
   "정상근무", "연차", "반차", "정휴무", "관공휴일",
-  "대출", "출장", "조퇴", "결근", "근로자의날", "미사용휴무",
+  "대출", "출장", "조퇴", "결근", "근로자의날", "미사용휴무", "초과근무",
 ];
 
 export const ATTENDANCE_CATEGORY_COLORS: Record<AttendanceCategory, string> = {
@@ -81,6 +84,7 @@ export const ATTENDANCE_CATEGORY_COLORS: Record<AttendanceCategory, string> = {
   "결근": "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
   "근로자의날": "bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300",
   "미사용휴무": "bg-slate-100 text-slate-700 dark:bg-slate-800/30 dark:text-slate-300",
+  "초과근무": "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300",
 };
 
 export const EMPLOYMENT_STATUS_COLORS: Record<EmploymentStatus, string> = {

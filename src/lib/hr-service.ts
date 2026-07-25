@@ -11,7 +11,7 @@ import type {
   Position,
   AttendanceCategory,
 } from "./hr-types";
-import { parseDeductionMethod, encodeDeductionMethod, calculateRemainingLeave, calculateRemainingUnusedRest, calcLegalLeave } from "./leave-utils";
+import { parseDeductionMethod, encodeDeductionMethod, parseOvertimeHours, encodeOvertimeHours, calculateRemainingLeave, calculateRemainingUnusedRest, calcLegalLeave } from "./leave-utils";
 
 function getEmployeeDbId(): string {
   const id = process.env.NOTION_HR_EMPLOYEE_DB_ID;
@@ -84,6 +84,7 @@ function mapAttendance(page: NotionPage): AttendanceRecord {
     category,
     note,
     deductionMethod: category === "조퇴" ? parseDeductionMethod(note) : undefined,
+    overtimeHours: category === "초과근무" ? parseOvertimeHours(note) ?? undefined : undefined,
   };
 }
 
@@ -164,11 +165,19 @@ export async function getAllAttendance(): Promise<AttendanceRecord[]> {
   return pages.map(mapAttendance);
 }
 
+function buildAttendanceNote(data: AttendanceFormData): string {
+  if (data.category === "조퇴" && data.deductionMethod) {
+    return encodeDeductionMethod(data.deductionMethod, data.note);
+  }
+  if (data.category === "초과근무" && data.overtimeHours) {
+    return encodeOvertimeHours(data.overtimeHours, data.note);
+  }
+  return data.note;
+}
+
 export async function createAttendance(data: AttendanceFormData, employeeName: string): Promise<string> {
   const title = `${employeeName} - ${data.category}`;
-  const note = data.category === "조퇴" && data.deductionMethod
-    ? encodeDeductionMethod(data.deductionMethod, data.note)
-    : data.note;
+  const note = buildAttendanceNote(data);
 
   const properties: Record<string, unknown> = {
     "제목": { title: [{ text: { content: title } }] },
@@ -187,9 +196,7 @@ export async function createAttendance(data: AttendanceFormData, employeeName: s
 
 export async function updateAttendance(id: string, data: AttendanceFormData, employeeName: string): Promise<void> {
   const title = `${employeeName} - ${data.category}`;
-  const note = data.category === "조퇴" && data.deductionMethod
-    ? encodeDeductionMethod(data.deductionMethod, data.note)
-    : data.note;
+  const note = buildAttendanceNote(data);
 
   const properties: Record<string, unknown> = {
     "제목": { title: [{ text: { content: title } }] },
