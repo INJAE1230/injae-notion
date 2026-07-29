@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { Sparkles, X, Send, Loader2, Trash2 } from "lucide-react";
@@ -10,20 +11,80 @@ import { cn } from "@/lib/utils";
 const SUGGESTIONS = [
   "이번 주 업무 몇 건이야?",
   "완료 안 된 긴급 업무 보여줘",
+  "내일 거래처 미팅 일정 추가해줘",
   "미사용휴무 며칠 남았어?",
-  "진행 중인 트랙 알려줘",
 ];
+
+const STORAGE_KEY = "ai-assistant-messages";
+const MAX_STORED = 40;
 
 export function AiAssistant() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+  const router = useRouter();
+
+  // transport는 한 번만 만들고, 매 요청 시점의 pathname을 함수로 읽어 보낸다
+  // (경로가 바뀔 때마다 transport를 새로 만들면 진행 중인 스트림이 끊긴다).
+  const pathnameRef = useRef(pathname);
+  pathnameRef.current = pathname;
+
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: "/api/chat",
+        body: () => ({ pathname: pathnameRef.current }),
+      }),
+    []
+  );
 
   const { messages, sendMessage, status, error, setMessages, stop } = useChat({
-    transport: new DefaultChatTransport({ api: "/api/chat" }),
+    transport,
   });
 
   const busy = status === "submitted" || status === "streaming";
+
+  // 대화 복원 — 새로고침·페이지 이동에도 맥락이 유지되도록
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) setMessages(parsed);
+      }
+    } catch {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+    restoredRef.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 대화 저장 (스트리밍이 끝난 뒤에만 저장해 중간 상태가 남지 않게).
+  // 복원 전에는 저장하지 않는다 — 마운트 시점의 빈 messages로 기존 기록을 지워버리기 때문.
+  useEffect(() => {
+    if (busy || !restoredRef.current) return;
+    try {
+      if (messages.length === 0) localStorage.removeItem(STORAGE_KEY);
+      else localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-MAX_STORED)));
+    } catch {
+      // 용량 초과 등은 무시 — 저장 실패가 대화를 막으면 안 됨
+    }
+  }, [messages, busy]);
+
+  // 비서가 데이터를 바꿨으면 화면을 갱신해 결과가 즉시 보이게 한다
+  const prevBusyRef = useRef(false);
+  useEffect(() => {
+    const wroteData =
+      !busy &&
+      prevBusyRef.current &&
+      messages[messages.length - 1]?.parts.some(
+        (p) => p.type === "tool-addWorkLog" || p.type === "tool-updateWorkLogFields"
+      );
+    prevBusyRef.current = busy;
+    if (wroteData) router.refresh();
+  }, [busy, messages, router]);
 
   // 외부 트리거 이벤트로도 열 수 있게 (커맨드 팔레트 등에서 재사용 가능)
   useEffect(() => {
@@ -105,9 +166,9 @@ export function AiAssistant() {
                     <Sparkles className="h-6 w-6 text-primary" />
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    업무·트랙·근태·연차·급여에 대해
+                    업무·트랙·근태·연차·급여를 묻고,
                     <br />
-                    무엇이든 물어보세요
+                    업무 등록·상태 변경까지 시킬 수 있어요
                   </p>
                   <div className="flex flex-wrap justify-center gap-1.5">
                     {SUGGESTIONS.map((s) => (
@@ -181,7 +242,17 @@ function MessageBubble({ message }: { message: ChatMessage }) {
     .map((p) => p.text)
     .join("");
 
-  const usedTool = message.parts.some((p) => p.type.startsWith("tool-") || p.type === "dynamic-tool");
+  const toolTypes = message.parts
+    .filter((p) => p.type.startsWith("tool-") || p.type === "dynamic-tool")
+    .map((p) => p.type);
+  const usedTool = toolTypes.length > 0;
+
+  // 쓰기 도구는 조회와 구분해 표시 — 데이터가 바뀌는 중임을 사용자가 알아야 한다
+  const pendingLabel = toolTypes.some((t) => t === "tool-addWorkLog")
+    ? "업무를 등록하는 중…"
+    : toolTypes.some((t) => t === "tool-updateWorkLogFields")
+      ? "업무를 수정하는 중…"
+      : "데이터 조회 중…";
 
   if (!text && !usedTool) return null;
 
@@ -195,7 +266,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
             : "bg-muted text-foreground"
         )}
       >
-        {text || (usedTool && <span className="text-muted-foreground">데이터 조회 중…</span>)}
+        {text || (usedTool && <span className="text-muted-foreground">{pendingLabel}</span>)}
       </div>
     </div>
   );

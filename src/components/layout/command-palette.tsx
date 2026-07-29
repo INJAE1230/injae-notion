@@ -2,22 +2,37 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Loader2, FileText, CornerDownLeft } from "lucide-react";
+import {
+  Search,
+  Loader2,
+  FileText,
+  CornerDownLeft,
+  Sparkles,
+  CalendarCheck,
+  ListTodo,
+  Moon,
+} from "lucide-react";
+import { useTheme } from "next-themes";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { NAV_GROUPS } from "@/components/layout/sidebar";
 import { STATUS_COLORS } from "@/lib/constants";
+import { getKSTToday } from "@/lib/date-utils";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { WorkLog } from "@/lib/types";
 
 const NAV_ITEMS = NAV_GROUPS.flatMap((g) => g.items);
 
-type NavResult = { kind: "nav"; href: string; label: string; icon: (typeof NAV_ITEMS)[number]["icon"] };
+type IconType = (typeof NAV_ITEMS)[number]["icon"];
+type ActionItem = { id: string; label: string; icon: IconType; run: () => void };
+type ActionResult = { kind: "action"; action: ActionItem };
+type NavResult = { kind: "nav"; href: string; label: string; icon: IconType };
 type LogResult = { kind: "log"; log: WorkLog };
-type Result = NavResult | LogResult;
+type Result = ActionResult | NavResult | LogResult;
 
 export function CommandPalette() {
   const router = useRouter();
+  const { theme, setTheme } = useTheme();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [logs, setLogs] = useState<WorkLog[]>([]);
@@ -74,11 +89,42 @@ export function CommandPalette() {
     return () => clearTimeout(t);
   }, [query, open]);
 
-  const navMatches = NAV_ITEMS.filter((i) =>
-    i.label.toLowerCase().includes(query.trim().toLowerCase())
-  );
+  const actions: ActionItem[] = [
+    {
+      id: "ai",
+      label: "AI 비서에게 물어보기",
+      icon: Sparkles,
+      run: () => window.dispatchEvent(new Event("ai-assistant:open")),
+    },
+    {
+      id: "today",
+      label: "오늘 업무 보기",
+      icon: CalendarCheck,
+      run: () => {
+        const t = getKSTToday();
+        router.push(`/logs?dateFrom=${t}&dateTo=${t}`);
+      },
+    },
+    {
+      id: "open",
+      label: "미완료 업무 보기",
+      icon: ListTodo,
+      run: () => router.push("/logs?status=exclude-done"),
+    },
+    {
+      id: "theme",
+      label: "테마 변경",
+      icon: Moon,
+      run: () => setTheme(theme === "dark" ? "light" : "dark"),
+    },
+  ];
+
+  const q = query.trim().toLowerCase();
+  const actionMatches = actions.filter((a) => a.label.toLowerCase().includes(q));
+  const navMatches = NAV_ITEMS.filter((i) => i.label.toLowerCase().includes(q));
 
   const results: Result[] = [
+    ...actionMatches.map((action) => ({ kind: "action" as const, action })),
     ...navMatches.map((n) => ({ kind: "nav" as const, ...n })),
     ...logs.map((log) => ({ kind: "log" as const, log })),
   ];
@@ -89,8 +135,10 @@ export function CommandPalette() {
 
   const go = useCallback(
     (r: Result) => {
-      router.push(r.kind === "nav" ? r.href : `/logs/${r.log.id}`);
       setOpen(false);
+      if (r.kind === "action") r.action.run();
+      else if (r.kind === "nav") router.push(r.href);
+      else router.push(`/logs/${r.log.id}`);
     },
     [router]
   );
@@ -138,13 +186,38 @@ export function CommandPalette() {
             </p>
           ) : (
             <>
-              {navMatches.length > 0 && (
+              {actionMatches.length > 0 && (
                 <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                  액션
+                </p>
+              )}
+              {actionMatches.map((a, i) => {
+                const idx = i;
+                return (
+                  <button
+                    key={a.id}
+                    data-idx={idx}
+                    onClick={() => go({ kind: "action", action: a })}
+                    onMouseMove={() => setActive(idx)}
+                    className={cn(
+                      "flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm",
+                      active === idx ? "bg-accent text-foreground" : "text-muted-foreground"
+                    )}
+                  >
+                    <a.icon className="h-4 w-4 shrink-0" />
+                    <span className="flex-1">{a.label}</span>
+                    {active === idx && <CornerDownLeft className="h-3.5 w-3.5 opacity-50" />}
+                  </button>
+                );
+              })}
+
+              {navMatches.length > 0 && (
+                <p className="px-2 py-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
                   이동
                 </p>
               )}
               {navMatches.map((n, i) => {
-                const idx = i;
+                const idx = actionMatches.length + i;
                 return (
                   <button
                     key={n.href}
@@ -169,7 +242,7 @@ export function CommandPalette() {
                 </p>
               )}
               {logs.map((log, i) => {
-                const idx = navMatches.length + i;
+                const idx = actionMatches.length + navMatches.length + i;
                 return (
                   <button
                     key={log.id}

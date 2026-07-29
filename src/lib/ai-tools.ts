@@ -1,18 +1,22 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { queryWorkLogs } from "./notion-service";
+import { queryWorkLogs, createWorkLog, updateWorkLog } from "./notion-service";
 import { getAllTracks } from "./track-service";
 import { getAllEmployees, getAllAttendance } from "./hr-service";
 import { getAllPayrolls } from "./payroll-service";
-import { PROJECTS, STATUSES, PRIORITIES } from "./constants";
-import type { WorkLogFilters } from "./types";
+import { getKSTToday } from "./date-utils";
+import { PROJECTS, STATUSES, PRIORITIES, TAGS } from "./constants";
+import type { WorkLogFilters, WorkLogFormData } from "./types";
 
 /**
- * AI 비서가 호출하는 조회 전용 도구 모음.
+ * AI 비서가 호출하는 도구 모음.
  *
- * 모두 읽기 전용이다 — AI가 데이터를 생성·수정·삭제하지 않는다. 잘못된 tool
- * 호출이 데이터를 망가뜨릴 수 없어야 하기 때문. 각 도구는 기존 서비스 함수를
- * 감싸고, 토큰을 아끼려 응답에서 꼭 필요한 필드만 추려 반환한다.
+ * 조회 도구는 기존 서비스 함수를 감싸고, 토큰을 아끼려 응답에서 꼭 필요한
+ * 필드만 추려 반환한다.
+ *
+ * 쓰기 도구는 생성·수정까지만 제공하고 삭제는 의도적으로 넣지 않는다. 생성과
+ * 수정은 앱에서 되돌릴 수 있지만 삭제는 복구 수단이 없어, 잘못된 tool 호출의
+ * 피해 상한을 낮추기 위함이다.
  */
 
 export const aiTools = {
@@ -154,6 +158,64 @@ export const aiTools = {
           overtimeHours: p.overtimeHours,
         })),
       };
+    },
+  }),
+
+  addWorkLog: tool({
+    description:
+      "새 업무를 등록한다. 사용자가 명시적으로 등록·추가·기록을 요청했을 때만 사용한다. " +
+      "여러 건을 요청하면 건마다 한 번씩 호출한다. 등록 후에는 무엇을 등록했는지 사용자에게 요약해 알린다.",
+    inputSchema: z.object({
+      title: z.string().describe("업무 제목. 간결하게"),
+      date: z.string().nullable().describe("날짜 (YYYY-MM-DD). 사용자가 날짜를 말하지 않았으면 null이면 오늘로 등록됨"),
+      projects: z.array(z.enum(PROJECTS as [string, ...string[]])).describe("사업장. 사용자가 말하지 않았으면 빈 배열"),
+      status: z.enum(STATUSES as [string, ...string[]]).nullable().describe("진행 상태. 말하지 않았으면 null(예정으로 등록)"),
+      priority: z.enum(PRIORITIES as [string, ...string[]]).nullable().describe("우선순위. 말하지 않았으면 null"),
+      content: z.string().nullable().describe("업무 상세 내용. 없으면 null"),
+      tags: z.array(z.enum(TAGS as [string, ...string[]])).describe("태그. 없으면 빈 배열"),
+      hours: z.number().nullable().describe("소요 시간(시간 단위). 없으면 null"),
+    }),
+    execute: async (args) => {
+      const data: WorkLogFormData = {
+        title: args.title,
+        date: args.date || getKSTToday(),
+        projects: (args.projects.length > 0 ? args.projects : ["청초수"]) as WorkLogFormData["projects"],
+        status: (args.status || "예정") as WorkLogFormData["status"],
+        content: args.content || "",
+        tags: args.tags as WorkLogFormData["tags"],
+        hours: args.hours,
+        link: null,
+        priority: args.priority as WorkLogFormData["priority"],
+      };
+      const id = await createWorkLog(data, { inputSource: "빠른메모" });
+      return { ok: true, id, title: data.title, date: data.date, status: data.status };
+    },
+  }),
+
+  updateWorkLogFields: tool({
+    description:
+      "기존 업무의 상태·우선순위·날짜·소요시간을 수정한다. 반드시 searchWorkLogs로 대상 업무의 id를 먼저 확인한 뒤 호출한다. " +
+      "후보가 여러 건이면 임의로 고르지 말고 사용자에게 어느 것인지 물어본다. 삭제는 할 수 없다.",
+    inputSchema: z.object({
+      id: z.string().describe("수정할 업무의 id (searchWorkLogs 결과의 id)"),
+      status: z.enum(STATUSES as [string, ...string[]]).nullable().describe("바꿀 진행 상태. 변경 안 하면 null"),
+      priority: z.enum(PRIORITIES as [string, ...string[]]).nullable().describe("바꿀 우선순위. 변경 안 하면 null"),
+      date: z.string().nullable().describe("바꿀 날짜 (YYYY-MM-DD). 변경 안 하면 null"),
+      hours: z.number().nullable().describe("바꿀 소요 시간. 변경 안 하면 null"),
+    }),
+    execute: async (args) => {
+      const patch: Partial<WorkLogFormData> = {};
+      if (args.status) patch.status = args.status as WorkLogFormData["status"];
+      if (args.priority) patch.priority = args.priority as WorkLogFormData["priority"];
+      if (args.date) patch.date = args.date;
+      if (args.hours !== null) patch.hours = args.hours;
+
+      if (Object.keys(patch).length === 0) {
+        return { ok: false, reason: "변경할 항목이 지정되지 않았습니다" };
+      }
+
+      await updateWorkLog(args.id, patch);
+      return { ok: true, id: args.id, changed: patch };
     },
   }),
 };
