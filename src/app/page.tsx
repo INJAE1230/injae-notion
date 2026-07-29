@@ -17,6 +17,7 @@ import { UpcomingDeadlines } from "@/components/dashboard/upcoming-deadlines";
 import { DeadlineAlert } from "@/components/dashboard/deadline-alert";
 import { TemplateQuickActions } from "@/components/dashboard/template-quick-actions";
 import { TrackStatusWidget } from "@/components/dashboard/track-status-widget";
+import { CollapsibleSection } from "@/components/dashboard/collapsible-section";
 import { templateDatabaseId } from "@/lib/notion";
 
 export const revalidate = 60;
@@ -89,19 +90,20 @@ export default async function DashboardPage() {
       {/* 최근 업무 */}
       <RecentLogs logs={recentLogs} />
 
-      {/* 분석 (심층 지표는 하단에 모아서) */}
-      <section className="space-y-6 pt-2">
-        <h2 className="text-sm font-semibold text-muted-foreground">분석</h2>
-        <div className="grid gap-6 lg:grid-cols-2">
-          <ProjectChart stats={stats} />
-          <StatusChart stats={stats} />
+      {/* 분석 — 매일 보는 지표가 아니라 기본은 접어둔다 (열림 상태는 기억됨) */}
+      <CollapsibleSection title="분석" storageKey="dashboard-analytics-open" defaultOpen={false}>
+        <div className="space-y-6">
+          <div className="grid gap-6 lg:grid-cols-2">
+            <ProjectChart stats={stats} />
+            <StatusChart stats={stats} />
+          </div>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <PriorityChart stats={stats} />
+            <WeeklyChart stats={stats} />
+          </div>
+          <CompletionRateChart stats={stats} />
         </div>
-        <div className="grid gap-6 lg:grid-cols-2">
-          <PriorityChart stats={stats} />
-          <WeeklyChart stats={stats} />
-        </div>
-        <CompletionRateChart stats={stats} />
-      </section>
+      </CollapsibleSection>
     </div>
   );
 }
