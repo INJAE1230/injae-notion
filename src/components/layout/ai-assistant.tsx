@@ -6,6 +6,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { Sparkles, X, Send, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AssistantMarkdown } from "@/components/layout/assistant-markdown";
 import { cn } from "@/lib/utils";
 
 const SUGGESTIONS = [
@@ -260,13 +261,18 @@ function MessageBubble({ message }: { message: ChatMessage }) {
     <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
       <div
         className={cn(
-          "max-w-[85%] rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap break-words",
+          "max-w-[85%] rounded-2xl px-3.5 py-2 text-sm break-words",
           isUser
-            ? "bg-primary text-primary-foreground"
+            ? "whitespace-pre-wrap bg-primary text-primary-foreground"
             : "bg-muted text-foreground"
         )}
       >
-        {text || (usedTool && <span className="text-muted-foreground">{pendingLabel}</span>)}
+        {text ? (
+          // 사용자 입력은 쓴 그대로 보여주고, 비서 답변만 마크다운으로 렌더링
+          isUser ? text : <AssistantMarkdown text={text} />
+        ) : (
+          usedTool && <span className="text-muted-foreground">{pendingLabel}</span>
+        )}
       </div>
     </div>
   );
