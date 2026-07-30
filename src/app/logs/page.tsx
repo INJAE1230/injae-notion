@@ -40,7 +40,7 @@ async function LogList({ searchParams }: { searchParams: Record<string, string> 
         </p>
         <CsvDownload logs={logs} />
       </div>
-      <LogTable logs={logs} tracks={tracks} />
+      <LogTable logs={logs} tracks={tracks} searchQuery={searchParams.search} />
     </>
   );
 }

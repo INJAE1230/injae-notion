@@ -30,6 +30,7 @@ import { MoreHorizontal, Pencil, Trash2, X, Layers, ClipboardList, ChevronUp, Ch
 import { STATUS_COLORS, PROJECT_COLORS, TAG_COLORS, PRIORITY_COLORS, STATUSES, PRIORITIES } from "@/lib/constants";
 import { EmptyState } from "@/components/ui/empty-state";
 import { DeleteDialog } from "./delete-dialog";
+import { MatchExcerpts, toKeywords } from "./match-excerpt";
 import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -67,8 +68,17 @@ function compareLogs(a: WorkLog, b: WorkLog, key: SortKey): number {
   }
 }
 
-export function LogTable({ logs: initialLogs, tracks = [] }: { logs: WorkLog[]; tracks?: Track[] }) {
+export function LogTable({
+  logs: initialLogs,
+  tracks = [],
+  searchQuery,
+}: {
+  logs: WorkLog[];
+  tracks?: Track[];
+  searchQuery?: string;
+}) {
   const trackMap = new Map(tracks.map((t) => [t.id, t.title]));
+  const keywords = useMemo(() => (searchQuery ? toKeywords(searchQuery) : []), [searchQuery]);
   const router = useRouter();
   const [logs, setLogs] = useState(initialLogs);
   const [deleteTarget, setDeleteTarget] = useState<WorkLog | null>(null);
@@ -209,6 +219,7 @@ export function LogTable({ logs: initialLogs, tracks = [] }: { logs: WorkLog[]; 
                 <Link href={`/logs/${log.id}`} className="flex-1 min-w-0">
                   <p className="font-medium truncate">{log.title}</p>
                   <p className="text-xs text-muted-foreground mt-1">{formatDateShort(log.date)}</p>
+                  <MatchExcerpts log={log} keywords={keywords} />
                 </Link>
               </div>
               <DropdownMenu>
@@ -306,6 +317,7 @@ export function LogTable({ logs: initialLogs, tracks = [] }: { logs: WorkLog[]; 
                       </Badge>
                     </div>
                   )}
+                  <MatchExcerpts log={log} keywords={keywords} />
                 </TableCell>
                 <TableCell className="text-muted-foreground">{formatDateShort(log.date)}</TableCell>
                 <TableCell>
