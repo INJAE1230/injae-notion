@@ -8,7 +8,6 @@ import { PriorityChart } from "@/components/dashboard/priority-chart";
 import { ProjectChart } from "@/components/dashboard/project-chart";
 import { WeeklyChart } from "@/components/dashboard/weekly-chart";
 import { CompletionRateChart } from "@/components/dashboard/completion-rate-chart";
-import { RecentLogs } from "@/components/dashboard/recent-logs";
 import { QuickMemoInput } from "@/components/memo/quick-memo-input";
 import { MorningBriefing } from "@/components/dashboard/morning-briefing";
 import { TaskPanels } from "@/components/dashboard/task-panels";
@@ -37,7 +36,6 @@ export default async function DashboardPage() {
   const [allLogs, tracks] = await Promise.all([getAllWorkLogs(), getAllTracks()]);
   const ownLogs = allLogs.filter((l) => !l.trackId);
   const stats = computeStats(ownLogs);
-  const recentLogs = ownLogs.slice(0, 5);
 
   const todayStr = getKSTToday();
   const todayLogs = ownLogs.filter((log) => log.date === todayStr);
@@ -80,9 +78,6 @@ export default async function DashboardPage() {
 
       {/* 트랙 현황 */}
       <TrackStatusWidget tracks={tracks} allLogs={allLogs} today={todayStr} />
-
-      {/* 최근 업무 */}
-      <RecentLogs logs={recentLogs} />
 
       {/* 분석 — 매일 보는 지표가 아니라 기본은 접어둔다 (열림 상태는 기억됨) */}
       <CollapsibleSection title="분석" storageKey="dashboard-analytics-open" defaultOpen={false}>
