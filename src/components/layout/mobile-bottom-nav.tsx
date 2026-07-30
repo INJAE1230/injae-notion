@@ -9,6 +9,7 @@ import {
   Plus,
   Layers,
   MoreHorizontal,
+  ArrowRight,
 } from "lucide-react";
 import {
   Sheet,
@@ -17,69 +18,61 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { NavContent } from "@/components/layout/sidebar";
+import { QuickMemoInput } from "@/components/memo/quick-memo-input";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/", label: "대시보드", icon: LayoutDashboard },
   { href: "/logs", label: "목록", icon: ClipboardList },
-  { href: "/logs/new", label: "추가", icon: Plus, primary: true },
   { href: "/tracks", label: "트랙", icon: Layers },
 ];
 
 export function MobileBottomNav() {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
       <div className="px-3" style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom, 12px))" }}>
         <div className="flex items-center justify-around h-16 rounded-2xl border border-border/60 bg-card/90 backdrop-blur-xl shadow-2xl px-1">
-          {NAV_ITEMS.map((item) => {
-            const isActive =
-              item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+          {NAV_ITEMS.slice(0, 2).map((item) => (
+            <NavLink key={item.href} item={item} pathname={pathname} />
+          ))}
 
-            if (item.primary) {
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  aria-label={item.label}
-                  className="flex flex-col items-center justify-center -mt-5"
-                >
-                  <div className="flex h-[52px] w-[52px] items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/40 ring-4 ring-background">
-                    <item.icon className="h-5 w-5" />
-                  </div>
-                </Link>
-              );
-            }
-
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-label={item.label}
-                className="relative flex flex-col items-center justify-center gap-1 px-4 py-2 rounded-xl"
+          <Sheet open={quickAddOpen} onOpenChange={setQuickAddOpen}>
+            <SheetTrigger asChild>
+              <button
+                type="button"
+                aria-label="빠른 메모 추가"
+                className="flex flex-col items-center justify-center -mt-5"
               >
-                {isActive && (
-                  <span className="absolute inset-0 rounded-xl bg-primary/10" />
-                )}
-                <item.icon
-                  className={cn(
-                    "h-[22px] w-[22px] relative transition-colors",
-                    isActive ? "text-primary" : "text-muted-foreground"
-                  )}
-                />
-                <span
-                  className={cn(
-                    "text-[10px] font-medium relative transition-colors",
-                    isActive ? "text-primary" : "text-muted-foreground"
-                  )}
-                >
-                  {item.label}
-                </span>
-              </Link>
-            );
-          })}
+                <div className="flex h-[52px] w-[52px] items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/40 ring-4 ring-background">
+                  <Plus className="h-5 w-5" />
+                </div>
+              </button>
+            </SheetTrigger>
+            <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto">
+              <SheetTitle className="sr-only">빠른 메모</SheetTitle>
+              <div className="pt-2 pb-4">
+                <div className="flex justify-end mb-2">
+                  <Link
+                    href="/logs/new"
+                    onClick={() => setQuickAddOpen(false)}
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    상세 입력
+                    <ArrowRight className="h-3 w-3" />
+                  </Link>
+                </div>
+                <QuickMemoInput />
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          {NAV_ITEMS.slice(2).map((item) => (
+            <NavLink key={item.href} item={item} pathname={pathname} />
+          ))}
 
           <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
             <SheetTrigger asChild>
@@ -100,5 +93,39 @@ export function MobileBottomNav() {
         </div>
       </div>
     </nav>
+  );
+}
+
+function NavLink({
+  item,
+  pathname,
+}: {
+  item: { href: string; label: string; icon: typeof LayoutDashboard };
+  pathname: string;
+}) {
+  const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+
+  return (
+    <Link
+      href={item.href}
+      aria-label={item.label}
+      className="relative flex flex-col items-center justify-center gap-1 px-4 py-2 rounded-xl"
+    >
+      {isActive && <span className="absolute inset-0 rounded-xl bg-primary/10" />}
+      <item.icon
+        className={cn(
+          "h-[22px] w-[22px] relative transition-colors",
+          isActive ? "text-primary" : "text-muted-foreground"
+        )}
+      />
+      <span
+        className={cn(
+          "text-[10px] font-medium relative transition-colors",
+          isActive ? "text-primary" : "text-muted-foreground"
+        )}
+      >
+        {item.label}
+      </span>
+    </Link>
   );
 }
