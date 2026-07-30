@@ -26,18 +26,45 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MoreHorizontal, Pencil, Trash2, X, Layers, ClipboardList } from "lucide-react";
-import { STATUS_COLORS, PROJECT_COLORS, TAG_COLORS, PRIORITY_COLORS, STATUSES } from "@/lib/constants";
+import { MoreHorizontal, Pencil, Trash2, X, Layers, ClipboardList, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
+import { STATUS_COLORS, PROJECT_COLORS, TAG_COLORS, PRIORITY_COLORS, STATUSES, PRIORITIES } from "@/lib/constants";
 import { EmptyState } from "@/components/ui/empty-state";
 import { DeleteDialog } from "./delete-dialog";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import type { WorkLog, Status, Track } from "@/lib/types";
 
 const DAY_SHORT = ["일", "월", "화", "수", "목", "금", "토"];
 function formatDateShort(dateStr: string) {
   const d = new Date(dateStr + "T00:00:00");
   return `${d.getMonth() + 1}/${d.getDate()}(${DAY_SHORT[d.getDay()]})`;
+}
+
+type SortKey = "title" | "date" | "status" | "priority" | "hours";
+type SortDir = "asc" | "desc";
+
+// 상태·우선순위는 사전순이 아니라 의미 순서로 정렬해야 한다
+const STATUS_ORDER = new Map(STATUSES.map((s, i) => [s, i]));
+const PRIORITY_ORDER = new Map(PRIORITIES.map((p, i) => [p, i]));
+
+/** 값이 없는 항목(우선순위 미설정·소요시간 없음)은 가장 낮은 값으로 취급한다 */
+function compareLogs(a: WorkLog, b: WorkLog, key: SortKey): number {
+  switch (key) {
+    case "title":
+      return a.title.localeCompare(b.title, "ko");
+    case "date":
+      return a.date.localeCompare(b.date);
+    case "status":
+      return (STATUS_ORDER.get(a.status) ?? 99) - (STATUS_ORDER.get(b.status) ?? 99);
+    case "priority": {
+      const av = a.priority ? PRIORITY_ORDER.get(a.priority) ?? 98 : 99;
+      const bv = b.priority ? PRIORITY_ORDER.get(b.priority) ?? 98 : 99;
+      return av - bv;
+    }
+    case "hours":
+      return (a.hours ?? -1) - (b.hours ?? -1);
+  }
 }
 
 export function LogTable({ logs: initialLogs, tracks = [] }: { logs: WorkLog[]; tracks?: Track[] }) {
@@ -52,6 +79,28 @@ export function LogTable({ logs: initialLogs, tracks = [] }: { logs: WorkLog[]; 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState<Status | "">("");
   const [bulkLoading, setBulkLoading] = useState(false);
+  // 서버가 날짜 내림차순으로 주므로 그것을 기본값으로 맞춘다
+  const [sortKey, setSortKey] = useState<SortKey>("date");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  const sortedLogs = useMemo(() => {
+    const arr = [...logs];
+    arr.sort((a, b) => {
+      const c = compareLogs(a, b, sortKey);
+      return sortDir === "asc" ? c : -c;
+    });
+    return arr;
+  }, [logs, sortKey, sortDir]);
+
+  function toggleSort(key: SortKey) {
+    if (key === sortKey) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      // 날짜·소요시간은 큰 값부터 보는 게 자연스럽고, 나머지는 오름차순이 자연스럽다
+      setSortDir(key === "date" || key === "hours" ? "desc" : "asc");
+    }
+  }
 
   if (logs.length === 0) {
     return (
@@ -148,7 +197,7 @@ export function LogTable({ logs: initialLogs, tracks = [] }: { logs: WorkLog[]; 
 
       {/* 모바일 카드 뷰 */}
       <div className="space-y-3 md:hidden">
-        {logs.map((log) => (
+        {sortedLogs.map((log) => (
           <div key={log.id} className="rounded-lg border bg-card p-4 transition-colors active:bg-muted/50">
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-start gap-2 flex-1 min-w-0">
@@ -223,18 +272,18 @@ export function LogTable({ logs: initialLogs, tracks = [] }: { logs: WorkLog[]; 
                   onCheckedChange={toggleAll}
                 />
               </TableHead>
-              <TableHead>업무</TableHead>
-              <TableHead className="w-[100px]">날짜</TableHead>
+              <SortableHead label="업무" sortKey="title" active={sortKey} dir={sortDir} onSort={toggleSort} />
+              <SortableHead label="날짜" sortKey="date" active={sortKey} dir={sortDir} onSort={toggleSort} className="w-[100px]" />
               <TableHead className="w-[90px]">프로젝트</TableHead>
-              <TableHead className="w-[80px]">상태</TableHead>
-              <TableHead className="w-[90px]">우선순위</TableHead>
+              <SortableHead label="상태" sortKey="status" active={sortKey} dir={sortDir} onSort={toggleSort} className="w-[80px]" />
+              <SortableHead label="우선순위" sortKey="priority" active={sortKey} dir={sortDir} onSort={toggleSort} className="w-[90px]" />
               <TableHead className="w-[140px]">태그</TableHead>
-              <TableHead className="w-[80px] text-right">소요시간</TableHead>
+              <SortableHead label="소요시간" sortKey="hours" active={sortKey} dir={sortDir} onSort={toggleSort} className="w-[80px]" align="right" />
               <TableHead className="w-[50px]" />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {logs.map((log) => (
+            {sortedLogs.map((log) => (
               <TableRow
                 key={log.id}
                 className={`transition-colors hover:bg-muted/50 ${selected.has(log.id) ? "bg-accent/50" : ""}`}
@@ -337,5 +386,43 @@ export function LogTable({ logs: initialLogs, tracks = [] }: { logs: WorkLog[]; 
         }}
       />
     </>
+  );
+}
+
+function SortableHead({
+  label,
+  sortKey,
+  active,
+  dir,
+  onSort,
+  className,
+  align = "left",
+}: {
+  label: string;
+  sortKey: SortKey;
+  active: SortKey;
+  dir: SortDir;
+  onSort: (key: SortKey) => void;
+  className?: string;
+  align?: "left" | "right";
+}) {
+  const isActive = active === sortKey;
+  const Icon = !isActive ? ChevronsUpDown : dir === "asc" ? ChevronUp : ChevronDown;
+
+  return (
+    <TableHead className={className} aria-sort={isActive ? (dir === "asc" ? "ascending" : "descending") : "none"}>
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className={cn(
+          "flex items-center gap-1 transition-colors hover:text-foreground",
+          align === "right" && "ml-auto",
+          isActive ? "text-foreground" : "text-muted-foreground"
+        )}
+      >
+        {label}
+        <Icon className={cn("h-3 w-3 shrink-0", !isActive && "opacity-40")} />
+      </button>
+    </TableHead>
   );
 }
