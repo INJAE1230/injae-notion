@@ -11,9 +11,7 @@ import { CompletionRateChart } from "@/components/dashboard/completion-rate-char
 import { RecentLogs } from "@/components/dashboard/recent-logs";
 import { QuickMemoInput } from "@/components/memo/quick-memo-input";
 import { MorningBriefing } from "@/components/dashboard/morning-briefing";
-import { TodayTasks } from "@/components/dashboard/today-tasks";
-import { InProgressTasks } from "@/components/dashboard/in-progress-tasks";
-import { UpcomingDeadlines } from "@/components/dashboard/upcoming-deadlines";
+import { TaskPanels } from "@/components/dashboard/task-panels";
 import { DeadlineAlert } from "@/components/dashboard/deadline-alert";
 import { TemplateQuickActions } from "@/components/dashboard/template-quick-actions";
 import { TrackStatusWidget } from "@/components/dashboard/track-status-widget";
@@ -74,12 +72,8 @@ export default async function DashboardPage() {
       {/* 마감 알림 */}
       <DeadlineAlert logs={ownLogs} />
 
-      {/* 오늘의 업무 + 진행 중 + 마감 임박 (오늘 처리할 것 우선) */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        <TodayTasks logs={todayLogs} />
-        <InProgressTasks logs={ownLogs} />
-        <UpcomingDeadlines logs={ownLogs} />
-      </div>
+      {/* 오늘의 업무 + 진행 중 + 마감 임박 (모바일은 세그먼트 전환) */}
+      <TaskPanels todayLogs={todayLogs} allLogs={ownLogs} />
 
       {/* 반복 업무 */}
       {templateDatabaseId && <TemplateQuickActions />}

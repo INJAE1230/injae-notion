@@ -11,8 +11,13 @@ import type { WorkLog } from "@/lib/types";
 /** 날짜와 무관하게 "진행 중" 상태인 업무를 모아 보여준다. 오늘의 업무(TodayTasks)는
  * 날짜가 오늘인 것만 보므로, 여러 날에 걸쳐 진행 중인 업무는 여기가 아니면 대시보드
  * 어디에도 목록으로 나오지 않는다. */
+/** 위젯 본문과 탭 배지가 같은 기준을 쓰도록 선택 로직을 한 곳에 둔다 */
+export function selectInProgress(logs: WorkLog[]): WorkLog[] {
+  return logs.filter((log) => log.status === "진행 중");
+}
+
 export function InProgressTasks({ logs }: { logs: WorkLog[] }) {
-  const inProgress = logs.filter((log) => log.status === "진행 중");
+  const inProgress = selectInProgress(logs);
 
   return (
     <Card>

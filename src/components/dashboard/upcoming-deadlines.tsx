@@ -29,12 +29,17 @@ function getUrgencyColor(days: number) {
   return "text-yellow-600 dark:text-yellow-400";
 }
 
-export function UpcomingDeadlines({ logs }: { logs: WorkLog[] }) {
-  const upcoming = logs
+/** 위젯 본문과 탭 배지가 같은 기준을 쓰도록 선택 로직을 한 곳에 둔다 */
+export function selectUpcoming(logs: WorkLog[]) {
+  return logs
     .filter((log) => log.status === "예정" && log.date)
     .map((log) => ({ ...log, daysUntil: getDaysUntil(log.date) }))
     .filter((log) => log.daysUntil <= 3)
     .sort((a, b) => a.daysUntil - b.daysUntil);
+}
+
+export function UpcomingDeadlines({ logs }: { logs: WorkLog[] }) {
+  const upcoming = selectUpcoming(logs);
 
   return (
     <Card>
